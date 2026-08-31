@@ -45,11 +45,11 @@ html {
   scroll-behavior: smooth;
 }
 
-html[data-font-scale='small'] {
+html.font-scale--small {
   font-size: 93.75%;
 }
 
-html[data-font-scale='large'] {
+html.font-scale--large {
   font-size: 112.5%;
 }
 
@@ -471,11 +471,7 @@ h3 {
   isolation: isolate;
   border-bottom: 1px solid var(--color-border);
   background:
-    radial-gradient(
-      circle at 82% 20%,
-      rgb(180 196 63 / 24%),
-      transparent 34%
-    ),
+    radial-gradient(circle at 82% 20%, rgb(180 196 63 / 24%), transparent 34%),
     radial-gradient(circle at 20% 18%, rgb(31 50 61 / 10%), transparent 28%),
     linear-gradient(135deg, #f7f9f9 0%, #fff 42%, var(--color-mint) 100%);
 }
@@ -670,7 +666,9 @@ h3 {
 }
 
 .home-news .content-card__eyebrow,
-.home-news .content-card > p:not(.content-card__number, .content-card__eyebrow) {
+.home-news
+  .content-card
+  > p:not(.content-card__number, .content-card__eyebrow) {
   display: none;
 }
 

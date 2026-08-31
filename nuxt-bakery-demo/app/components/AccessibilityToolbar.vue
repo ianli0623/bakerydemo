@@ -4,44 +4,49 @@ import {
   reduceFontScale,
   type FontScale,
   type FontScaleAction,
-  writeStoredFontScale
-} from '~/utils/accessibility'
+  writeStoredFontScale,
+} from '~/utils/accessibility';
 
-const { locale, t } = useI18n()
-const switchLocalePath = useSwitchLocalePath()
-const fontScale = ref<FontScale>('default')
+const { locale, t } = useI18n();
+const switchLocalePath = useSwitchLocalePath();
+const fontScale = ref<FontScale>('default');
 
 function applyFontScale(value: FontScale, persist = true) {
-  fontScale.value = value
+  fontScale.value = value;
 
   if (!import.meta.client) {
-    return
+    return;
   }
 
-  document.documentElement.dataset.fontScale = value
+  document.documentElement.dataset.fontScale = value;
+  document.documentElement.classList.remove(
+    'font-scale--small',
+    'font-scale--default',
+    'font-scale--large',
+  );
+  document.documentElement.classList.add(`font-scale--${value}`);
   if (persist) {
-    writeStoredFontScale(window.localStorage, value)
+    writeStoredFontScale(window.localStorage, value);
   }
 }
 
 function updateFontScale(action: FontScaleAction) {
-  applyFontScale(reduceFontScale(fontScale.value, action))
+  applyFontScale(reduceFontScale(fontScale.value, action));
 }
 
 onMounted(() => {
-  applyFontScale(readStoredFontScale(window.localStorage), false)
-})
+  applyFontScale(readStoredFontScale(window.localStorage), false);
+});
 </script>
 
 <template>
-  <aside
-    class="accessibility-toolbar"
-    :aria-label="t('accessibility.toolbar')"
-  >
+  <aside class="accessibility-toolbar" :aria-label="t('accessibility.toolbar')">
     <div class="accessibility-toolbar__inner">
       <div class="accessibility-toolbar__controls">
         <a href="#main-content">{{ t('accessibility.skipToContent') }}</a>
-        <span class="accessibility-toolbar__separator" aria-hidden="true">|</span>
+        <span class="accessibility-toolbar__separator" aria-hidden="true"
+          >|</span
+        >
         <span>{{ t('accessibility.fontSize') }}</span>
         <button
           type="button"

@@ -216,6 +216,38 @@ class ImportSemiE187DryRunTests(TestCase):
 
         self.assertIn(f"about：更新（ID {about.pk}）", output)
 
+    def test_same_slug_page_in_another_locale_is_ignored(self):
+        about = StandardPage(title="Existing about", slug="about")
+        self.home.add_child(instance=about)
+        about.save_revision().publish()
+
+        other_locale = Locale.objects.create(language_code="de")
+        translated_home = HomePage(
+            title="Translated home",
+            slug="translated-home",
+            locale=other_locale,
+            hero_text="Translated",
+            hero_cta="Explore",
+        )
+        self.root.add_child(instance=translated_home)
+        translated_about = StandardPage(
+            title="Translated about",
+            slug="about",
+            locale=other_locale,
+        )
+        translated_home.add_child(instance=translated_about)
+
+        targets = validate_targets(
+            parse_source_site(self.html_dir, self.asset_dir),
+            self.home.pk,
+        )
+
+        about_target = next(
+            target for target in targets.pages if target.slug == "about"
+        )
+        self.assertEqual(about_target.action, "update")
+        self.assertEqual(about_target.page_id, about.pk)
+
     def test_publish_updates_home_and_creates_all_content(self):
         self.home.lead_title = "Legacy promo"
         self.home.lead_text = "Legacy promo text"

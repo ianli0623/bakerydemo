@@ -5,25 +5,26 @@ export default defineNuxtConfig({
   devServer: { port: 3100 },
   devtools: { enabled: true },
   runtimeConfig: {
-    bakeryBaseUrl: ''
+    bakeryBaseUrl: '',
   },
   i18n: {
     strategy: 'prefix_except_default',
     defaultLocale: 'zh-hant',
+    detectBrowserLanguage: false,
     langDir: 'locales',
     locales: [
       {
         code: 'zh-hant',
         language: 'zh-Hant',
         name: '繁體中文',
-        file: 'zh-hant.json'
+        file: 'zh-hant.json',
       },
       {
         code: 'en',
         language: 'en',
         name: 'English',
-        file: 'en.json'
-      }
-    ]
-  }
-})
+        file: 'en.json',
+      },
+    ],
+  },
+});

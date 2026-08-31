@@ -3,35 +3,35 @@ import type {
   BakeryImage,
   BakerySiteSettings,
   BakeryStandardPage,
-  BakeryStreamBlock
-} from '../../shared/types/bakery.ts'
+  BakeryStreamBlock,
+} from '../../shared/types/bakery.ts';
 
 export interface FooterLogoPresentation {
-  src: string
-  alt: string
-  width: number
-  height: number
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
 }
 
 export interface HomeBlockPartition {
-  newsBlock: BakeryCardGridBlock | null
-  remainingBlocks: BakeryStreamBlock[]
+  newsBlock: BakeryCardGridBlock | null;
+  remainingBlocks: BakeryStreamBlock[];
 }
 
 export interface StandardPageSectionPresentation {
-  anchorId: string
-  headingId: string
-  kicker: string
-  title: string
-  introduction: string
-  introductionHtml: string
-  layout: 'split' | 'stacked'
-  surface: 'white' | 'muted'
-  body: BakeryStreamBlock[]
+  anchorId: string;
+  headingId: string;
+  kicker: string;
+  title: string;
+  introduction: string;
+  introductionHtml: string;
+  layout: 'split' | 'stacked';
+  surface: 'white' | 'muted';
+  body: BakeryStreamBlock[];
 }
 
 export interface StandardPagePresentation {
-  sections: StandardPageSectionPresentation[]
+  sections: StandardPageSectionPresentation[];
 }
 
 const referenceStandardSections: Record<
@@ -45,38 +45,40 @@ const referenceStandardSections: Record<
     anchorId: 'about',
     headingId: 'about-heading',
     layout: 'split',
-    surface: 'white'
+    surface: 'white',
   },
   resources: {
     anchorId: 'resources',
     headingId: 'resources-heading',
     layout: 'stacked',
-    surface: 'muted'
+    surface: 'muted',
   },
   certification: {
     anchorId: 'certification',
     headingId: 'certification-heading',
     layout: 'stacked',
-    surface: 'white'
-  }
-}
+    surface: 'white',
+  },
+};
 
-function withoutCardGridHeading(block: BakeryCardGridBlock): BakeryCardGridBlock {
+function withoutCardGridHeading(
+  block: BakeryCardGridBlock,
+): BakeryCardGridBlock {
   return {
     ...block,
     value: {
       ...block.value,
       heading: '',
-      introduction: ''
-    }
-  }
+      introduction: '',
+    },
+  };
 }
 
 export function getStandardPagePresentation(
   slug: string,
-  page: BakeryStandardPage
+  page: BakeryStandardPage,
 ): StandardPagePresentation {
-  const referenceSection = referenceStandardSections[slug]
+  const referenceSection = referenceStandardSections[slug];
   const section: StandardPageSectionPresentation = {
     anchorId: referenceSection?.anchorId || slug,
     headingId: referenceSection?.headingId || `${slug}-heading`,
@@ -86,37 +88,41 @@ export function getStandardPagePresentation(
     introductionHtml: '',
     layout: referenceSection?.layout || 'stacked',
     surface: referenceSection?.surface || 'white',
-    body: page.body
-  }
+    body: page.body,
+  };
 
-  const firstBlock = page.body[0]
+  const firstBlock = page.body[0];
   if (
-    (slug === 'about' || slug === 'certification')
-    && firstBlock?.type === 'paragraph_block'
+    (slug === 'about' || slug === 'certification') &&
+    firstBlock?.type === 'paragraph_block'
   ) {
     return {
-      sections: [{
-        ...section,
-        introduction: '',
-        introductionHtml: firstBlock.value,
-        body: page.body.slice(1)
-      }]
-    }
+      sections: [
+        {
+          ...section,
+          introduction: '',
+          introductionHtml: firstBlock.value,
+          body: page.body.slice(1),
+        },
+      ],
+    };
   }
 
   if (slug === 'resources' && firstBlock?.type === 'card_grid') {
     return {
-      sections: [{
-        ...section,
-        introduction: page.introduction || firstBlock.value.introduction,
-        body: [withoutCardGridHeading(firstBlock), ...page.body.slice(1)]
-      }]
-    }
+      sections: [
+        {
+          ...section,
+          introduction: page.introduction || firstBlock.value.introduction,
+          body: [withoutCardGridHeading(firstBlock), ...page.body.slice(1)],
+        },
+      ],
+    };
   }
 
   if (slug === 'ecosystem') {
-    const overviewBlock = firstBlock?.type === 'card_grid' ? firstBlock : null
-    const caseStudyBlocks = overviewBlock ? page.body.slice(1) : page.body
+    const overviewBlock = firstBlock?.type === 'card_grid' ? firstBlock : null;
+    const caseStudyBlocks = overviewBlock ? page.body.slice(1) : page.body;
 
     return {
       sections: [
@@ -124,12 +130,13 @@ export function getStandardPagePresentation(
           anchorId: 'ecosystem',
           headingId: 'ecosystem-heading',
           kicker: page.section_kicker || 'SEMI E187',
-          title: page.section_heading || overviewBlock?.value.heading || page.title,
+          title:
+            page.section_heading || overviewBlock?.value.heading || page.title,
           introduction: overviewBlock?.value.introduction || page.introduction,
           introductionHtml: '',
           layout: 'stacked',
           surface: 'muted',
-          body: overviewBlock ? [withoutCardGridHeading(overviewBlock)] : []
+          body: overviewBlock ? [withoutCardGridHeading(overviewBlock)] : [],
         },
         {
           anchorId: 'case-studies',
@@ -140,72 +147,80 @@ export function getStandardPagePresentation(
           introductionHtml: '',
           layout: 'stacked',
           surface: 'muted',
-          body: caseStudyBlocks
-        }
-      ]
-    }
+          body: caseStudyBlocks,
+        },
+      ],
+    };
   }
 
-  return { sections: [section] }
+  return { sections: [section] };
 }
 
 export function partitionHomeBlocks(
-  blocks: BakeryStreamBlock[]
+  blocks: BakeryStreamBlock[],
 ): HomeBlockPartition {
-  const newsIndex = blocks.findIndex(block => block.type === 'card_grid')
+  const newsIndex = blocks.findIndex((block) => block.type === 'card_grid');
 
   if (newsIndex < 0) {
-    return { newsBlock: null, remainingBlocks: blocks }
+    return { newsBlock: null, remainingBlocks: blocks };
   }
 
   return {
     newsBlock: blocks[newsIndex] as BakeryCardGridBlock,
-    remainingBlocks: blocks.filter((_, index) => index !== newsIndex)
-  }
+    remainingBlocks: blocks.filter((_, index) => index !== newsIndex),
+  };
 }
 
 function normalizePath(value: string): string {
-  const pathname = value.split(/[?#]/, 1)[0] || '/'
+  const pathname = value.split(/[?#]/, 1)[0] || '/';
   return pathname === '/'
     ? '/'
-    : `/${pathname.split('/').filter(Boolean).join('/')}/`
+    : `/${pathname.split('/').filter(Boolean).join('/')}/`;
 }
 
 export function reduceNavigationOpen(
   open: boolean,
-  event: 'toggle' | 'escape' | 'route'
+  event: 'toggle' | 'escape' | 'route',
 ): boolean {
-  return event === 'toggle' ? !open : false
+  return event === 'toggle' ? !open : false;
 }
 
 export function isNavigationItemActive(
   itemPath: string,
-  currentPath: string
+  currentPath: string,
 ): boolean {
-  return normalizePath(itemPath) === normalizePath(currentPath)
+  return normalizePath(itemPath) === normalizePath(currentPath);
 }
 
-export function getContactLinks(
-  contact: BakerySiteSettings['contact']
-): { phone: string | null; email: string | null } {
+export function getNavigationItemLabel(
+  item: Pick<BakerySiteSettings['navigation'][number], 'slug' | 'title'>,
+  homeLabel: string,
+): string {
+  return item.slug ? item.title : homeLabel;
+}
+
+export function getContactLinks(contact: BakerySiteSettings['contact']): {
+  phone: string | null;
+  email: string | null;
+} {
   return {
     phone: contact.phone_href || null,
-    email: contact.email ? `mailto:${contact.email}` : null
-  }
+    email: contact.email ? `mailto:${contact.email}` : null,
+  };
 }
 
 export function getFooterLogoPresentation(
-  logo: BakeryImage | null
+  logo: BakeryImage | null,
 ): FooterLogoPresentation | null {
-  const rendition = logo?.meta.rendition
+  const rendition = logo?.meta.rendition;
   if (!logo || !rendition) {
-    return null
+    return null;
   }
 
   return {
     src: rendition.full_url || rendition.url,
     alt: rendition.alt || logo.title,
     width: rendition.width,
-    height: rendition.height
-  }
+    height: rendition.height,
+  };
 }

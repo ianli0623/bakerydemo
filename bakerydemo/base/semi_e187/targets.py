@@ -64,7 +64,12 @@ def validate_targets(plan: ImportPlan, home_id: int) -> TargetSummary:
     actions = []
     target_ids = set()
     for page_import in plan.pages:
-        matches = list(Page.objects.filter(slug=page_import.slug).specific())
+        matches = list(
+            Page.objects.filter(
+                slug=page_import.slug,
+                locale_id=home.locale_id,
+            ).specific()
+        )
         if len(matches) > 1:
             raise TargetValidationError(
                 f"slug {page_import.slug} 出現多次，無法判斷匯入目標。"

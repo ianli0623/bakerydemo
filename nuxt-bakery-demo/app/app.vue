@@ -1,51 +1,55 @@
 <script setup lang="ts">
-import type { BakerySiteSettings } from '#shared/types/bakery'
+import type { BakerySiteSettings } from '#shared/types/bakery';
 import {
   getContactLinks,
   getFooterLogoPresentation,
+  getNavigationItemLabel,
   isNavigationItemActive,
-  reduceNavigationOpen
-} from '~/utils/site-presentation'
+  reduceNavigationOpen,
+} from '~/utils/site-presentation';
 
-const route = useRoute()
-const { locale, t } = useI18n()
-const localePath = useLocalePath()
-const switchLocalePath = useSwitchLocalePath()
-const localeQuery = computed(() => ({ locale: locale.value }))
+const route = useRoute();
+const { locale, t } = useI18n();
+const localePath = useLocalePath();
+const switchLocalePath = useSwitchLocalePath();
+const localeQuery = computed(() => ({ locale: locale.value }));
 const { data: settings, error: settingsError } =
   await useFetch<BakerySiteSettings>('/api/bakery/site-settings', {
-    query: localeQuery
-  })
+    query: localeQuery,
+  });
 
 useHead(() => ({
-  htmlAttrs: { lang: locale.value === 'en' ? 'en' : 'zh-Hant' }
-}))
+  htmlAttrs: { lang: locale.value === 'en' ? 'en' : 'zh-Hant' },
+}));
 
-const navigationOpen = ref(false)
+const navigationOpen = ref(false);
 const toggleNavigation = () => {
-  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, 'toggle')
-}
+  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, 'toggle');
+};
 const closeNavigation = (event: 'escape' | 'route') => {
-  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, event)
-}
+  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, event);
+};
 
-watch(() => route.path, () => closeNavigation('route'))
+watch(
+  () => route.path,
+  () => closeNavigation('route'),
+);
 
 const onWindowKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    closeNavigation('escape')
+    closeNavigation('escape');
   }
-}
+};
 
-onMounted(() => window.addEventListener('keydown', onWindowKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKeydown))
+onMounted(() => window.addEventListener('keydown', onWindowKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKeydown));
 
 const contactLinks = computed(() =>
-  settings.value ? getContactLinks(settings.value.contact) : null
-)
+  settings.value ? getContactLinks(settings.value.contact) : null,
+);
 const footerLogo = computed(() =>
-  getFooterLogoPresentation(settings.value?.footer_logo ?? null)
-)
+  getFooterLogoPresentation(settings.value?.footer_logo ?? null),
+);
 </script>
 
 <template>
@@ -65,8 +69,10 @@ const footerLogo = computed(() =>
           @click="closeNavigation('route')"
         >
           <span class="brand-copy">
-            <strong>{{ settings?.site_name || 'SEMI E187' }}</strong>
-            <small v-if="settings?.brand_label">{{ settings.brand_label }}</small>
+            <strong>{{ settings?.title_suffix || 'SEMI E187' }}</strong>
+            <small v-if="settings?.brand_label">{{
+              settings.brand_label
+            }}</small>
           </span>
         </NuxtLink>
 
@@ -78,7 +84,11 @@ const footerLogo = computed(() =>
           @click="toggleNavigation"
         >
           <span class="nav-toggle__label">
-            {{ navigationOpen ? t('navigation.closeMenu') : t('navigation.openMenu') }}
+            {{
+              navigationOpen
+                ? t('navigation.closeMenu')
+                : t('navigation.openMenu')
+            }}
           </span>
           <span class="nav-toggle__icon" aria-hidden="true">
             <i />
@@ -103,9 +113,13 @@ const footerLogo = computed(() =>
             "
             @click="closeNavigation('route')"
           >
-            {{ item.title }}
+            {{ getNavigationItemLabel(item, t('navigation.home')) }}
           </NuxtLink>
-          <a class="nav-contact" href="#contact" @click="closeNavigation('route')">
+          <a
+            class="nav-contact"
+            href="#contact"
+            @click="closeNavigation('route')"
+          >
             {{ t('navigation.contact') }}
           </a>
           <div
@@ -160,13 +174,15 @@ const footerLogo = computed(() =>
             v-if="contactLinks.phone && settings.contact.phone"
             :href="contactLinks.phone"
           >
-            <span>{{ t('contact.phone') }}</span>{{ settings.contact.phone }}
+            <span>{{ t('contact.phone') }}</span
+            >{{ settings.contact.phone }}
           </a>
           <a
             v-if="contactLinks.email && settings.contact.email"
             :href="contactLinks.email"
           >
-            <span>{{ t('contact.email') }}</span>{{ settings.contact.email }}
+            <span>{{ t('contact.email') }}</span
+            >{{ settings.contact.email }}
           </a>
           <p v-if="!contactLinks.phone && !contactLinks.email">
             {{ t('status.unavailable') }}
@@ -182,11 +198,15 @@ const footerLogo = computed(() =>
               :height="footerLogo.height"
               :alt="footerLogo.alt"
               loading="lazy"
-            >
+            />
             <strong v-else>{{ settings?.site_name || 'SEMI E187' }}</strong>
           </div>
           <p class="footer-copyright">
-            {{ settings?.organisation_text || settings?.title_suffix || 'SEMI E187' }}
+            {{
+              settings?.organisation_text ||
+              settings?.title_suffix ||
+              'SEMI E187'
+            }}
           </p>
           <nav
             v-if="settings?.navigation.length"
@@ -197,10 +217,12 @@ const footerLogo = computed(() =>
               :key="item.id"
               :to="localePath(item.slug ? `/${item.slug}/` : '/')"
               :aria-current="
-                isNavigationItemActive(item.path, route.path) ? 'page' : undefined
+                isNavigationItemActive(item.path, route.path)
+                  ? 'page'
+                  : undefined
               "
             >
-              {{ item.title }}
+              {{ getNavigationItemLabel(item, t('navigation.home')) }}
             </NuxtLink>
           </nav>
         </div>
