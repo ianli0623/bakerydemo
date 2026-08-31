@@ -94,20 +94,18 @@ class LocalizedSiteContentFilterSet(RevisionFilterSetMixin, WagtailFilterSet):
 
 class LocalizedSiteContentViewSet(SnippetViewSet):
     model = LocalizedSiteContent
-    menu_label = "Multilingual site content"
+    menu_label = "多語系網站內容"
     icon = "globe"
     list_display = ("site_name", "site", "locale", "live")
     search_fields = ("site_name", "site_tagline", "contact_heading")
     filterset_class = LocalizedSiteContentFilterSet
 
 
-class BakerySnippetViewSetGroup(SnippetViewSetGroup):
-    menu_label = "Bakery Misc"
-    menu_icon = "utensils"  # change as required
-    menu_order = 300  # will put in 4th place (000 being 1st, 100 2nd)
-    items = (PersonViewSet, FooterTextViewSet, LocalizedSiteContentViewSet)
+class SemiSiteContentViewSetGroup(SnippetViewSetGroup):
+    menu_label = "SEMI E187 網站設定"
+    menu_icon = "globe"
+    menu_order = 200
+    items = (LocalizedSiteContentViewSet,)
 
 
-# When using a SnippetViewSetGroup class to group several SnippetViewSet classes together,
-# you only need to register the SnippetViewSetGroup class with Wagtail:
-register_snippet(BakerySnippetViewSetGroup)
+register_snippet(SemiSiteContentViewSetGroup)
