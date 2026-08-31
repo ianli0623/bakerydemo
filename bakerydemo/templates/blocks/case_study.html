@@ -1,0 +1,43 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+
+<article class="structured-case-study">
+    <header>
+        <p>{{ value.case_label }}</p>
+        <h2>{{ value.company }}</h2>
+        <p>{{ value.product }} · {{ value.certification_status }}</p>
+        <p>{{ value.summary }}</p>
+    </header>
+    <dl>
+        {% for item in value.metadata %}
+            <dt>{{ item.label }}</dt>
+            <dd>{{ item.value }}</dd>
+        {% endfor %}
+    </dl>
+    {% image value.equipment_image max-1200x800 as equipment_image %}
+    <figure>
+        <img src="{{ equipment_image.url }}" width="{{ equipment_image.width }}" height="{{ equipment_image.height }}" alt="{{ value.equipment_image.description|default:value.equipment_image.title }}">
+        {% if value.equipment_caption %}<figcaption>{{ value.equipment_caption }}</figcaption>{% endif %}
+    </figure>
+    <section>
+        <h3>{{ value.challenge_heading }}</h3>
+        {{ value.challenge|richtext }}
+    </section>
+    <section>
+        <h3>{{ value.solution_heading }}</h3>
+        {{ value.solution|richtext }}
+    </section>
+    <section>
+        <h3>資安控制措施</h3>
+        {% for control in value.security_controls %}
+            <article>
+                <h4>{{ control.title }}</h4>
+                <p>{{ control.summary }}</p>
+            </article>
+        {% endfor %}
+    </section>
+    {% image value.outcome_image max-1200x800 as outcome_image %}
+    <figure>
+        <img src="{{ outcome_image.url }}" width="{{ outcome_image.width }}" height="{{ outcome_image.height }}" alt="{{ value.outcome_image.description|default:value.outcome_image.title }}">
+        {% if value.outcome_caption %}<figcaption>{{ value.outcome_caption }}</figcaption>{% endif %}
+    </figure>
+</article>

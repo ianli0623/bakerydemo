@@ -1,0 +1,27 @@
+<section class="structured-process-steps">
+    <h2>{{ value.heading }}</h2>
+    {% if value.introduction %}<p>{{ value.introduction }}</p>{% endif %}
+    <ol>
+        {% for step in value.steps %}
+            <li>
+                <article>
+                    <p>{{ step.number }}</p>
+                    <h3>{{ step.title }}</h3>
+                    <p>{{ step.summary }}</p>
+                    {% if step.checklist %}
+                        <ul>
+                            {% for item in step.checklist %}<li>{{ item }}</li>{% endfor %}
+                        </ul>
+                    {% endif %}
+                    {% if step.resource_links %}
+                        <ul>
+                            {% for link in step.resource_links %}
+                                <li>{% include "blocks/_content_link.html" with link=link only %}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </article>
+            </li>
+        {% endfor %}
+    </ol>
+</section>

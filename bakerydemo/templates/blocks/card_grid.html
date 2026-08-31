@@ -1,0 +1,18 @@
+<section class="structured-card-grid">
+    {% if value.eyebrow %}<p>{{ value.eyebrow }}</p>{% endif %}
+    <h2>{{ value.heading }}</h2>
+    {% if value.introduction %}<p>{{ value.introduction }}</p>{% endif %}
+    <div data-layout="{{ value.layout }}">
+        {% for card in value.cards %}
+            <article>
+                {% if card.number %}<p>{{ card.number }}</p>{% endif %}
+                {% if card.eyebrow %}<p>{{ card.eyebrow }}</p>{% endif %}
+                <h3>{{ card.title }}</h3>
+                <p>{{ card.summary }}</p>
+                {% if card.link %}
+                    {% include "blocks/_content_link.html" with link=card.link only %}
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+</section>

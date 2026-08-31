@@ -1,0 +1,30 @@
+<section id="{{ value.anchor_id }}" class="structured-document-table">
+    <h2>{{ value.heading }}</h2>
+    <table>
+        {% if value.caption %}<caption>{{ value.caption }}</caption>{% endif %}
+        <thead>
+            <tr>
+                <th scope="col">編號</th>
+                <th scope="col">文件</th>
+                <th scope="col">摘要</th>
+                <th scope="col">狀態</th>
+                <th scope="col">連結</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in value.rows %}
+                <tr>
+                    <td>{{ row.number }}</td>
+                    <th scope="row">{{ row.title }}</th>
+                    <td>{{ row.summary }}</td>
+                    <td>{{ row.status }}</td>
+                    <td>
+                        {% if row.link.label %}
+                            {% include "blocks/_content_link.html" with link=row.link only %}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
