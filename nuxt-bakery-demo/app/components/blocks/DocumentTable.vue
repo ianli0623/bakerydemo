@@ -6,6 +6,8 @@ import ContentLink from './ContentLink.vue'
 defineProps<{
   value: BakeryDocumentTableBlock['value']
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -22,10 +24,10 @@ defineProps<{
         <caption>{{ value.caption || value.heading }}</caption>
         <thead>
           <tr>
-            <th scope="col">編號</th>
-            <th scope="col">文件</th>
-            <th scope="col">說明</th>
-            <th scope="col">狀態／連結</th>
+            <th scope="col">{{ t('documents.number') }}</th>
+            <th scope="col">{{ t('documents.title') }}</th>
+            <th scope="col">{{ t('documents.summary') }}</th>
+            <th scope="col">{{ t('documents.status') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -34,13 +36,15 @@ defineProps<{
             :key="`${row.number}-${row.title}-${index}`"
             :id="getDocumentRowAnchor(row.number)"
           >
-            <td data-label="編號">{{ row.number }}</td>
-            <th scope="row" data-label="文件">{{ row.title }}</th>
-            <td data-label="說明">{{ row.summary }}</td>
-            <td data-label="狀態／連結">
+            <td :data-label="t('documents.number')">{{ row.number }}</td>
+            <th scope="row" :data-label="t('documents.title')">
+              {{ row.title }}
+            </th>
+            <td :data-label="t('documents.summary')">{{ row.summary }}</td>
+            <td :data-label="t('documents.status')">
               <ContentLink v-if="row.link" :link="row.link" />
               <span v-else class="document-status">
-                {{ row.status || '即將提供' }}
+                {{ row.status || t('status.unavailable') }}
               </span>
             </td>
           </tr>

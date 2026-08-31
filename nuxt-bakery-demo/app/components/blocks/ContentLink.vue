@@ -6,7 +6,11 @@ const props = defineProps<{
   link: BakeryContentLink
 }>()
 
-const presentation = computed(() => getLinkPresentation(props.link))
+const { t } = useI18n()
+const localePath = useLocalePath()
+const presentation = computed(() =>
+  getLinkPresentation(props.link, path => localePath(path))
+)
 </script>
 
 <template>
@@ -30,6 +34,6 @@ const presentation = computed(() => getLinkPresentation(props.link))
 
   <span v-else class="content-link content-link--disabled" aria-disabled="true">
     {{ presentation.label }}
-    <small>{{ presentation.status }}</small>
+    <small>{{ t('status.unavailable') }}</small>
   </span>
 </template>

@@ -17,9 +17,11 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "home": "Home",
-    "contact": "Contact us"
+    "contact": "Contact us",
+    "footer": "Footer navigation"
   },
   "contact": {
+    "headingFallback": "SEMI E187 compliance inquiries",
     "phone": "Phone",
     "email": "Email"
   },
@@ -28,7 +30,16 @@
     "error": "Unable to load the content.",
     "retry": "Try again",
     "unavailable": "Currently unavailable",
-    "notFound": "The requested published page could not be found."
+    "notFound": "The requested published page could not be found.",
+    "navigationError": "The menu is temporarily unavailable.",
+    "configurationError": "The Bakery API is not configured. Check NUXT_BAKERY_BASE_URL.",
+    "cmsUnavailable": "The Bakery CMS is unavailable. Make sure Wagtail is running.",
+    "homeLoading": "Loading the home page",
+    "homeLoadError": "Unable to load the home page",
+    "homeMissingTitle": "Home page content is unavailable",
+    "homeMissing": "Make sure the Wagtail home page is published.",
+    "pageLoading": "Loading the page",
+    "pageLoadError": "Unable to load the page"
   },
   "documents": {
     "number": "No.",

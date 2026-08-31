@@ -8,8 +8,17 @@ import {
 } from '~/utils/site-presentation'
 
 const route = useRoute()
+const { locale, t } = useI18n()
+const localePath = useLocalePath()
+const localeQuery = computed(() => ({ locale: locale.value }))
 const { data: settings, error: settingsError } =
-  await useFetch<BakerySiteSettings>('/api/bakery/site-settings')
+  await useFetch<BakerySiteSettings>('/api/bakery/site-settings', {
+    query: localeQuery
+  })
+
+useHead(() => ({
+  htmlAttrs: { lang: locale.value === 'en' ? 'en' : 'zh-Hant' }
+}))
 
 const navigationOpen = ref(false)
 const toggleNavigation = () => {
@@ -40,19 +49,21 @@ const footerLogo = computed(() =>
 
 <template>
   <div class="site-shell">
-    <a class="skip-link" href="#main-content">跳到主要內容</a>
+    <a class="skip-link" href="#main-content">
+      {{ t('accessibility.skipToContent') }}
+    </a>
 
     <header class="site-header">
       <div class="site-header-inner">
         <NuxtLink
           class="brand"
-          to="/"
-          :aria-label="`${settings?.site_name || 'SEMI E187'}首頁`"
+          :to="localePath('/')"
+          :aria-label="`${settings?.site_name || 'SEMI E187'} — ${t('navigation.home')}`"
           @click="closeNavigation('route')"
         >
           <span class="brand-copy">
-            <strong>SEMI E187</strong>
-            <small>認驗證制度</small>
+            <strong>{{ settings?.site_name || 'SEMI E187' }}</strong>
+            <small v-if="settings?.brand_label">{{ settings.brand_label }}</small>
           </span>
         </NuxtLink>
 
@@ -63,7 +74,9 @@ const footerLogo = computed(() =>
           :aria-expanded="navigationOpen"
           @click="toggleNavigation"
         >
-          <span class="nav-toggle__label">選單</span>
+          <span class="nav-toggle__label">
+            {{ navigationOpen ? t('navigation.closeMenu') : t('navigation.openMenu') }}
+          </span>
           <span class="nav-toggle__icon" aria-hidden="true">
             <i />
             <i />
@@ -75,13 +88,13 @@ const footerLogo = computed(() =>
           id="primary-navigation"
           class="site-nav"
           :class="{ 'site-nav--open': navigationOpen }"
-          aria-label="主要導覽"
+          :aria-label="t('navigation.label')"
         >
           <NuxtLink
             v-for="item in settings?.navigation || []"
             :key="item.id"
             class="nav-link"
-            :to="item.path"
+            :to="localePath(item.slug ? `/${item.slug}/` : '/')"
             :aria-current="
               isNavigationItemActive(item.path, route.path) ? 'page' : undefined
             "
@@ -90,10 +103,10 @@ const footerLogo = computed(() =>
             {{ item.title }}
           </NuxtLink>
           <a class="nav-contact" href="#contact" @click="closeNavigation('route')">
-            聯絡我們
+            {{ t('navigation.contact') }}
           </a>
           <span v-if="settingsError" class="nav-status" role="status">
-            選單暫時無法載入
+            {{ t('status.navigationError') }}
           </span>
         </nav>
       </div>
@@ -105,12 +118,12 @@ const footerLogo = computed(() =>
       <div class="footer-accent" aria-hidden="true" />
       <div class="footer-inner">
         <div class="footer-introduction">
-          <p class="footer-kicker">CONTACT US</p>
+          <p class="footer-kicker">{{ t('navigation.contact') }}</p>
           <h2 id="contact-heading">
-            {{ settings?.contact.heading || '半導體智慧製造資安合規諮詢' }}
+            {{ settings?.contact.heading || t('contact.headingFallback') }}
           </h2>
-          <p>
-            配合數位發展部推動產業資安跨域聯防，協助本土半導體設備廠與資安供應鏈進行生態鏈結。若您對 SEMI E187 認驗證程序有任何合規輔導或技術細節疑問，歡迎與專案推動辦公室聯絡。
+          <p v-if="settings?.footer_introduction">
+            {{ settings.footer_introduction }}
           </p>
         </div>
 
@@ -121,15 +134,17 @@ const footerLogo = computed(() =>
             v-if="contactLinks.phone && settings.contact.phone"
             :href="contactLinks.phone"
           >
-            <span>電話</span>{{ settings.contact.phone }}
+            <span>{{ t('contact.phone') }}</span>{{ settings.contact.phone }}
           </a>
           <a
             v-if="contactLinks.email && settings.contact.email"
             :href="contactLinks.email"
           >
-            <span>信箱</span>{{ settings.contact.email }}
+            <span>{{ t('contact.email') }}</span>{{ settings.contact.email }}
           </a>
-          <p v-if="!contactLinks.phone && !contactLinks.email">聯絡資訊即將提供</p>
+          <p v-if="!contactLinks.phone && !contactLinks.email">
+            {{ t('status.unavailable') }}
+          </p>
         </address>
 
         <div class="footer-bottom">
@@ -145,13 +160,16 @@ const footerLogo = computed(() =>
             <strong v-else>{{ settings?.site_name || 'SEMI E187' }}</strong>
           </div>
           <p class="footer-copyright">
-            {{ settings?.organisation_text || 'SEMI E187 Semiconductor Equipment Cybersecurity Certification Scheme.' }}
+            {{ settings?.organisation_text || settings?.title_suffix || 'SEMI E187' }}
           </p>
-          <nav v-if="settings?.navigation.length" aria-label="頁尾導覽">
+          <nav
+            v-if="settings?.navigation.length"
+            :aria-label="t('navigation.footer')"
+          >
             <NuxtLink
               v-for="item in settings.navigation"
               :key="item.id"
-              :to="item.path"
+              :to="localePath(item.slug ? `/${item.slug}/` : '/')"
               :aria-current="
                 isNavigationItemActive(item.path, route.path) ? 'page' : undefined
               "

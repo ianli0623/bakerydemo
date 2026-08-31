@@ -3,13 +3,24 @@ import type {
   BakeryHomeViewModel,
   BakerySiteSettings
 } from '#shared/types/bakery'
+import { normalizeBakeryLocale } from '#shared/utils/locale'
 import CardGrid from '~/components/blocks/CardGrid.vue'
+import {
+  getLocalizedSeoLinks,
+  getPageSeoPresentation
+} from '#shared/utils/localized-seo'
 import { partitionHomeBlocks } from '~/utils/site-presentation'
 
+const { locale, t } = useI18n()
+const localeQuery = computed(() => ({ locale: locale.value }))
 const { data: home, status, error, refresh } =
-  await useFetch<BakeryHomeViewModel>('/api/bakery/home')
+  await useFetch<BakeryHomeViewModel>('/api/bakery/home', {
+    query: localeQuery
+  })
 const { data: settings } =
-  await useFetch<BakerySiteSettings>('/api/bakery/site-settings')
+  await useFetch<BakerySiteSettings>('/api/bakery/site-settings', {
+    query: localeQuery
+  })
 
 const homePresentation = computed(() =>
   partitionHomeBlocks(home.value?.body ?? [])
@@ -17,22 +28,49 @@ const homePresentation = computed(() =>
 
 const errorMessage = computed(() =>
   error.value?.statusCode === 500
-    ? 'Bakery API 尚未設定，請檢查 NUXT_BAKERY_BASE_URL。'
-    : '目前無法連線到 Bakery CMS，請確認 Wagtail 已啟動。'
+    ? t('status.configurationError')
+    : t('status.cmsUnavailable')
 )
 
+const seoPresentation = computed(() => getPageSeoPresentation(
+  {
+    title: home.value?.title || settings.value?.site_name || 'SEMI E187',
+    seoTitle: home.value?.meta.seo_title || '',
+    searchDescription: home.value?.meta.search_description || '',
+    introduction: home.value?.hero_text || ''
+  },
+  settings.value?.title_suffix || ''
+))
+const requestOrigin = useRequestURL().origin
+const seoLinks = computed(() => getLocalizedSeoLinks(
+  requestOrigin,
+  normalizeBakeryLocale(locale.value)
+))
+
 useSeoMeta({
-  title: () => home.value?.meta.seo_title || home.value?.title || 'SEMI E187',
-  description: () =>
-    home.value?.meta.search_description
-    || home.value?.hero_text
-    || '半導體設備資安標準認驗證制度。'
+  title: () => seoPresentation.value.title,
+  description: () => seoPresentation.value.description
 })
+useHead(() => ({
+  link: [
+    { rel: 'canonical', href: seoLinks.value.canonical },
+    ...seoLinks.value.alternatives.map(alternative => ({
+      rel: 'alternate' as const,
+      type: 'text/html',
+      hreflang: alternative.hreflang,
+      href: alternative.href
+    }))
+  ]
+}))
 </script>
 
 <template>
   <main id="main-content" class="page-container home-page" aria-live="polite">
-    <div v-if="status === 'pending'" class="home-loading" aria-label="首頁載入中">
+    <div
+      v-if="status === 'pending'"
+      class="home-loading"
+      :aria-label="t('status.homeLoading')"
+    >
       <div class="skeleton skeleton-hero" />
       <div class="skeleton skeleton-line skeleton-line-short" />
       <div class="skeleton skeleton-line" />
@@ -40,18 +78,18 @@ useSeoMeta({
 
     <div v-else-if="error" class="state-panel state-error" role="alert">
       <div>
-        <strong>首頁讀取失敗</strong>
+        <strong>{{ t('status.homeLoadError') }}</strong>
         <p>{{ errorMessage }}</p>
       </div>
       <button class="button button-secondary" type="button" @click="refresh()">
-        再試一次
+        {{ t('status.retry') }}
       </button>
     </div>
 
     <div v-else-if="!home" class="state-panel">
       <div>
-        <strong>尚未取得首頁內容</strong>
-        <p>請確認 Wagtail 首頁已發布。</p>
+        <strong>{{ t('status.homeMissingTitle') }}</strong>
+        <p>{{ t('status.homeMissing') }}</p>
       </div>
     </div>
 
@@ -65,7 +103,7 @@ useSeoMeta({
           <div class="home-hero-content">
             <p class="hero-badge">
               <span aria-hidden="true" />
-              標準認知 × 技術資源 × 驗證合規
+              {{ home.hero_badge }}
             </p>
             <h1 id="home-title">{{ home.title }}</h1>
             <p v-if="settings?.site_tagline" class="hero-tagline">
@@ -82,10 +120,11 @@ useSeoMeta({
                 <span aria-hidden="true">→</span>
               </NuxtLink>
               <NuxtLink
+                v-if="home.secondary_hero_cta && home.secondaryHeroCtaPath"
                 class="button button-dark"
-                to="/certification/#certified-list"
+                :to="home.secondaryHeroCtaPath"
               >
-                合規設備清單
+                {{ home.secondary_hero_cta }}
                 <span aria-hidden="true">→</span>
               </NuxtLink>
             </div>
@@ -94,7 +133,7 @@ useSeoMeta({
           <aside
             v-if="homePresentation.newsBlock"
             class="home-news"
-            aria-label="最新消息"
+            :aria-label="homePresentation.newsBlock.value.heading"
           >
             <CardGrid :value="homePresentation.newsBlock.value" />
           </aside>

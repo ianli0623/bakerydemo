@@ -38,30 +38,24 @@ const referenceStandardSections: Record<
   string,
   Pick<
     StandardPageSectionPresentation,
-    'anchorId' | 'headingId' | 'kicker' | 'title' | 'layout' | 'surface'
+    'anchorId' | 'headingId' | 'layout' | 'surface'
   >
 > = {
   about: {
     anchorId: 'about',
     headingId: 'about-heading',
-    kicker: 'ABOUT SEMI E187',
-    title: '關於標準與背景介紹',
     layout: 'split',
     surface: 'white'
   },
   resources: {
     anchorId: 'resources',
     headingId: 'resources-heading',
-    kicker: 'IMPLEMENTATION RESOURCES',
-    title: '標準導入資源專區',
     layout: 'stacked',
     surface: 'muted'
   },
   certification: {
     anchorId: 'certification',
     headingId: 'certification-heading',
-    kicker: 'CERTIFICATION & COMPLIANCE',
-    title: '驗證與合規專區',
     layout: 'stacked',
     surface: 'white'
   }
@@ -86,8 +80,8 @@ export function getStandardPagePresentation(
   const section: StandardPageSectionPresentation = {
     anchorId: referenceSection?.anchorId || slug,
     headingId: referenceSection?.headingId || `${slug}-heading`,
-    kicker: referenceSection?.kicker || 'SEMI E187',
-    title: referenceSection?.title || page.title,
+    kicker: page.section_kicker || 'SEMI E187',
+    title: page.section_heading || page.title,
     introduction: page.introduction,
     introductionHtml: '',
     layout: referenceSection?.layout || 'stacked',
@@ -114,8 +108,7 @@ export function getStandardPagePresentation(
     return {
       sections: [{
         ...section,
-        title: firstBlock.value.heading || section.title,
-        introduction: firstBlock.value.introduction || page.introduction,
+        introduction: page.introduction || firstBlock.value.introduction,
         body: [withoutCardGridHeading(firstBlock), ...page.body.slice(1)]
       }]
     }
@@ -130,8 +123,8 @@ export function getStandardPagePresentation(
         {
           anchorId: 'ecosystem',
           headingId: 'ecosystem-heading',
-          kicker: 'CASE SHARING & ECOSYSTEM',
-          title: overviewBlock?.value.heading || '案例與生態系推動',
+          kicker: page.section_kicker || 'SEMI E187',
+          title: page.section_heading || overviewBlock?.value.heading || page.title,
           introduction: overviewBlock?.value.introduction || page.introduction,
           introductionHtml: '',
           layout: 'stacked',
@@ -141,9 +134,9 @@ export function getStandardPagePresentation(
         {
           anchorId: 'case-studies',
           headingId: 'cases-heading',
-          kicker: 'DEMONSTRATION SITES',
-          title: '設備廠商導入應用案例',
-          introduction: '提供半導體設備製造業者實施 SEMI E187 導入與驗證之實務場域示範標竿。',
+          kicker: page.secondary_section_kicker,
+          title: page.secondary_section_heading,
+          introduction: page.secondary_section_introduction,
           introductionHtml: '',
           layout: 'stacked',
           surface: 'muted',
@@ -159,9 +152,7 @@ export function getStandardPagePresentation(
 export function partitionHomeBlocks(
   blocks: BakeryStreamBlock[]
 ): HomeBlockPartition {
-  const newsIndex = blocks.findIndex(
-    block => block.type === 'card_grid' && block.value.heading.trim() === '最新消息'
-  )
+  const newsIndex = blocks.findIndex(block => block.type === 'card_grid')
 
   if (newsIndex < 0) {
     return { newsBlock: null, remainingBlocks: blocks }

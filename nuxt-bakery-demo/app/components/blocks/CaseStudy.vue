@@ -15,7 +15,7 @@ const equipmentImage = computed(() =>
 const outcomeImage = computed(() =>
   getImagePresentation(
     props.value.outcome_image,
-    props.value.outcome_caption || `${props.value.company} SEMI E187 驗證成果`
+    props.value.outcome_caption || `${props.value.company} SEMI E187`
   )
 )
 </script>
@@ -77,7 +77,7 @@ const outcomeImage = computed(() =>
         </div>
 
         <section v-if="value.security_controls.length" class="case-study__controls">
-          <h3>資安控制重點</h3>
+          <h3>{{ value.security_controls_heading }}</h3>
           <ul>
             <li
               v-for="(control, index) in value.security_controls"

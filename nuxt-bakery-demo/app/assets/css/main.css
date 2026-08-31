@@ -602,11 +602,6 @@ h3 {
 }
 
 .home-news a.content-link {
-  font-size: 0;
-}
-
-.home-news a.content-link::after {
-  content: '查看公告 →';
   font-size: 0.75rem;
 }
 

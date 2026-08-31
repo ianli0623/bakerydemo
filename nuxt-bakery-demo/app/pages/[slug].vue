@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import type { BakeryStandardPage } from '#shared/types/bakery'
+import type { BakerySiteSettings, BakeryStandardPage } from '#shared/types/bakery'
 import { isMissingBakeryPageError, isValidStandardPageSlug } from '#shared/utils/bakery'
+import { normalizeBakeryLocale } from '#shared/utils/locale'
+import {
+  getLocalizedSeoLinks,
+  getPageSeoPresentation
+} from '#shared/utils/localized-seo'
 import { getStandardPagePresentation } from '~/utils/site-presentation'
 
 const route = useRoute()
+const { locale, t } = useI18n()
 const slug = computed(() => String(route.params.slug ?? ''))
+const localeQuery = computed(() => ({ locale: locale.value }))
 
 function missingPageError() {
   return createError({
     statusCode: 404,
-    statusMessage: '找不到指定的已發布頁面。'
+    statusMessage: t('status.notFound')
   })
 }
 
@@ -28,7 +35,11 @@ const requestUrl = computed(
 )
 
 const { data: page, status, error, refresh } =
-  await useFetch<BakeryStandardPage>(requestUrl)
+  await useFetch<BakeryStandardPage>(requestUrl, { query: localeQuery })
+const { data: settings } =
+  await useFetch<BakerySiteSettings>('/api/bakery/site-settings', {
+    query: localeQuery
+  })
 
 const presentation = computed(() =>
   page.value ? getStandardPagePresentation(slug.value, page.value) : null
@@ -47,11 +58,37 @@ watch(error, (value) => {
   }
 })
 
+const seoPresentation = computed(() => getPageSeoPresentation(
+  {
+    title: page.value?.title || 'SEMI E187',
+    seoTitle: page.value?.meta.seo_title || '',
+    searchDescription: page.value?.meta.search_description || '',
+    introduction: page.value?.introduction || ''
+  },
+  settings.value?.title_suffix || ''
+))
+const requestOrigin = useRequestURL().origin
+const seoLinks = computed(() => getLocalizedSeoLinks(
+  requestOrigin,
+  normalizeBakeryLocale(locale.value),
+  slug.value
+))
+
 useSeoMeta({
-  title: () => page.value?.meta.seo_title || page.value?.title || 'SEMI E187',
-  description: () =>
-    page.value?.meta.search_description || page.value?.introduction || ''
+  title: () => seoPresentation.value.title,
+  description: () => seoPresentation.value.description
 })
+useHead(() => ({
+  link: [
+    { rel: 'canonical', href: seoLinks.value.canonical },
+    ...seoLinks.value.alternatives.map(alternative => ({
+      rel: 'alternate' as const,
+      type: 'text/html',
+      hreflang: alternative.hreflang,
+      href: alternative.href
+    }))
+  ]
+}))
 </script>
 
 <template>
@@ -61,7 +98,11 @@ useSeoMeta({
     :class="`standard-page--${slug}`"
     aria-live="polite"
   >
-    <div v-if="status === 'pending'" class="standard-loading" aria-label="頁面載入中">
+    <div
+      v-if="status === 'pending'"
+      class="standard-loading"
+      :aria-label="t('status.pageLoading')"
+    >
       <div class="skeleton skeleton-line skeleton-line-short" />
       <div class="skeleton skeleton-title" />
       <div class="skeleton skeleton-hero" />
@@ -69,11 +110,11 @@ useSeoMeta({
 
     <div v-else-if="error" class="state-panel state-error" role="alert">
       <div>
-        <strong>頁面讀取失敗</strong>
-        <p>目前無法連線到 Bakery CMS，請確認 Wagtail 已啟動。</p>
+        <strong>{{ t('status.pageLoadError') }}</strong>
+        <p>{{ t('status.cmsUnavailable') }}</p>
       </div>
       <button class="button button-secondary" type="button" @click="refresh()">
-        再試一次
+        {{ t('status.retry') }}
       </button>
     </div>
 
@@ -117,6 +158,7 @@ useSeoMeta({
             <StreamField
               :blocks="section.body"
               :reserved-anchors="reservedSectionAnchors"
+              :page-slug="slug"
             />
           </div>
         </div>

@@ -103,7 +103,7 @@ test('homepage presentation promotes the news grid without duplicating it', () =
     type: 'card_grid',
     value: {
       eyebrow: '',
-      heading: '最新消息',
+      heading: 'Latest News',
       introduction: '',
       layout: 'two',
       cards: []
@@ -160,6 +160,11 @@ function standardPage(
     meta: { type: 'base.StandardPage', slug },
     title,
     introduction,
+    section_kicker: '',
+    section_heading: '',
+    secondary_section_kicker: '',
+    secondary_section_heading: '',
+    secondary_section_introduction: '',
     body,
     image_hero: null
   }
@@ -175,14 +180,14 @@ test('about and certification become reference-style content sections without du
   const scenarios = [
     {
       slug: 'about',
-      title: '關於標準與背景介紹',
-      kicker: 'ABOUT SEMI E187',
+      title: 'About the Standard and Its Background',
+      kicker: 'UNDERSTANDING SEMI E187',
       html: '<p>標準背景第一段</p><p>標準背景第二段</p>'
     },
     {
       slug: 'certification',
-      title: '驗證與合規專區',
-      kicker: 'CERTIFICATION & COMPLIANCE',
+      title: 'Certification and Compliance',
+      kicker: 'ASSURANCE & COMPLIANCE',
       html: '<p>落實 <strong>公正性</strong> 與無歧視原則。</p>'
     }
   ]
@@ -199,10 +204,15 @@ test('about and certification become reference-style content sections without du
       value: { heading_text: '後續內容', size: 'h2' }
     } satisfies BakeryStreamBlock
 
-    const presentation = getStandardPagePresentation(
+    const page = standardPage(
       scenario.slug,
-      standardPage(scenario.slug, '原頁名', '原介紹', [lead, content])
+      'Original page title',
+      'Original introduction',
+      [lead, content]
     )
+    page.section_kicker = scenario.kicker
+    page.section_heading = scenario.title
+    const presentation = getStandardPagePresentation(scenario.slug, page)
 
     assert.deepEqual(presentation.sections, [{
       anchorId: scenario.slug,
@@ -237,17 +247,22 @@ test('resources becomes one muted reference-style section while preserving its c
     }
   } satisfies BakeryStreamBlock
 
-  const presentation = getStandardPagePresentation(
+  const page = standardPage(
     'resources',
-    standardPage('resources', '導入資源', '原介紹', [resources])
+    'Implementation Resources',
+    'Resources selected for organizations adopting the standard.',
+    [resources]
   )
+  page.section_kicker = 'IMPLEMENTATION TOOLKIT'
+  page.section_heading = 'SEMI E187 Implementation Resources'
+  const presentation = getStandardPagePresentation('resources', page)
 
   assert.deepEqual(presentation.sections, [{
     anchorId: 'resources',
     headingId: 'resources-heading',
-    kicker: 'IMPLEMENTATION RESOURCES',
-    title: '標準導入資源專區',
-    introduction: '為認驗證相關機構、技術實驗室及設備廠商提供核心指引與支援資源。',
+    kicker: 'IMPLEMENTATION TOOLKIT',
+    title: 'SEMI E187 Implementation Resources',
+    introduction: 'Resources selected for organizations adopting the standard.',
     introductionHtml: '',
     layout: 'stacked',
     surface: 'muted',
@@ -309,23 +324,32 @@ test('ecosystem follows the reference order with overview and demonstration sect
       challenge: '<p>挑戰內容</p>',
       solution_heading: '解決方案',
       solution: '<p>解決方案內容</p>',
+      security_controls_heading: 'Security Controls',
       security_controls: [],
       outcome_image: caseImage,
       outcome_caption: ''
     }
   } satisfies BakeryStreamBlock
 
-  const presentation = getStandardPagePresentation(
+  const page = standardPage(
     'ecosystem',
-    standardPage('ecosystem', '案例與生態', '原介紹', [overview, caseStudy])
+    'Cases and Ecosystem',
+    'Original introduction',
+    [overview, caseStudy]
   )
+  page.section_kicker = 'PARTNER ECOSYSTEM'
+  page.section_heading = 'Building the SEMI E187 Ecosystem'
+  page.secondary_section_kicker = 'DEMONSTRATION SITES'
+  page.secondary_section_heading = 'Implementation Case Studies'
+  page.secondary_section_introduction = 'See how equipment makers adopt and validate SEMI E187 in practice.'
+  const presentation = getStandardPagePresentation('ecosystem', page)
 
   assert.deepEqual(presentation.sections, [
     {
       anchorId: 'ecosystem',
       headingId: 'ecosystem-heading',
-      kicker: 'CASE SHARING & ECOSYSTEM',
-      title: '案例與生態系推動',
+      kicker: 'PARTNER ECOSYSTEM',
+      title: 'Building the SEMI E187 Ecosystem',
       introduction: '生態鏈結介紹',
       introductionHtml: '',
       layout: 'stacked',
@@ -343,8 +367,8 @@ test('ecosystem follows the reference order with overview and demonstration sect
       anchorId: 'case-studies',
       headingId: 'cases-heading',
       kicker: 'DEMONSTRATION SITES',
-      title: '設備廠商導入應用案例',
-      introduction: '提供半導體設備製造業者實施 SEMI E187 導入與驗證之實務場域示範標竿。',
+      title: 'Implementation Case Studies',
+      introduction: 'See how equipment makers adopt and validate SEMI E187 in practice.',
       introductionHtml: '',
       layout: 'stacked',
       surface: 'muted',
