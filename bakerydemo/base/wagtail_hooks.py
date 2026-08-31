@@ -5,7 +5,7 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
 from bakerydemo.base.filters import RevisionFilterSetMixin
-from bakerydemo.base.models import FooterText, Person
+from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 
 """
 N.B. To see what icons are available for use in Wagtail menus and StreamField block types,
@@ -82,11 +82,30 @@ class FooterTextViewSet(SnippetViewSet):
     filterset_class = FooterTextFilterSet
 
 
+class LocalizedSiteContentFilterSet(RevisionFilterSetMixin, WagtailFilterSet):
+    class Meta:
+        model = LocalizedSiteContent
+        fields = {
+            "site": ["exact"],
+            "locale": ["exact"],
+            "live": ["exact"],
+        }
+
+
+class LocalizedSiteContentViewSet(SnippetViewSet):
+    model = LocalizedSiteContent
+    menu_label = "Multilingual site content"
+    icon = "globe"
+    list_display = ("site_name", "site", "locale", "live")
+    search_fields = ("site_name", "site_tagline", "contact_heading")
+    filterset_class = LocalizedSiteContentFilterSet
+
+
 class BakerySnippetViewSetGroup(SnippetViewSetGroup):
     menu_label = "Bakery Misc"
     menu_icon = "utensils"  # change as required
     menu_order = 300  # will put in 4th place (000 being 1st, 100 2nd)
-    items = (PersonViewSet, FooterTextViewSet)
+    items = (PersonViewSet, FooterTextViewSet, LocalizedSiteContentViewSet)
 
 
 # When using a SnippetViewSetGroup class to group several SnippetViewSet classes together,

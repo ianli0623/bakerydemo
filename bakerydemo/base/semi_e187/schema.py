@@ -78,6 +78,7 @@ class PageImport:
 @dataclass(frozen=True)
 class SiteSettingsImport:
     title_suffix: str
+    brand_label: str
     site_name: str
     site_tagline: str
     contact_heading: str
@@ -85,6 +86,7 @@ class SiteSettingsImport:
     contact_context: str
     contact_phone: str
     contact_email: str
+    footer_introduction: str
     organisation_text: str
     footer_logo: str | None
     navigation_slugs: tuple[str, ...]

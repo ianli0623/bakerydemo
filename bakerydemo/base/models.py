@@ -667,20 +667,8 @@ class GenericSettings(ClusterableModel, PreviewableMixin, BaseGenericSetting):
 
 @register_setting(icon="site")
 class SiteSettings(BaseSiteSetting):
-    title_suffix = models.CharField(
-        verbose_name="Title suffix",
-        max_length=255,
-        help_text="The suffix for the title meta tag e.g. ' | The Wagtail Bakery'",
-        default="The Wagtail Bakery",
-    )
-    site_name = models.CharField(max_length=255, blank=True, default="")
-    site_tagline = models.CharField(max_length=255, blank=True, default="")
-    contact_heading = models.CharField(max_length=255, blank=True, default="")
-    contact_name = models.CharField(max_length=100, blank=True, default="")
-    contact_context = models.CharField(max_length=255, blank=True, default="")
     contact_phone = models.CharField(max_length=64, blank=True, default="")
     contact_email = models.EmailField(blank=True, default="")
-    organisation_text = models.TextField(blank=True, default="")
     footer_logo = models.ForeignKey(
         "wagtailimages.Image",
         null=True,
@@ -695,28 +683,91 @@ class SiteSettings(BaseSiteSetting):
     )
 
     panels = [
-        FieldPanel("title_suffix"),
+        FieldPanel("footer_logo"),
+        FieldPanel("primary_navigation"),
         MultiFieldPanel(
             [
+                FieldPanel("contact_phone"),
+                FieldPanel("contact_email"),
+            ],
+            heading="Shared contact details",
+        ),
+    ]
+
+
+class LocalizedSiteContent(
+    DraftStateMixin,
+    RevisionMixin,
+    PreviewableMixin,
+    TranslatableMixin,
+    models.Model,
+):
+    site = models.ForeignKey("wagtailcore.Site", on_delete=models.CASCADE)
+    brand_label = models.CharField(max_length=100, blank=True, default="")
+    title_suffix = models.CharField(max_length=255, blank=True, default="")
+    site_name = models.CharField(max_length=255, blank=True, default="")
+    site_tagline = models.CharField(max_length=255, blank=True, default="")
+    contact_heading = models.CharField(max_length=255, blank=True, default="")
+    contact_name = models.CharField(max_length=100, blank=True, default="")
+    contact_context = models.CharField(max_length=255, blank=True, default="")
+    footer_introduction = models.TextField(blank=True, default="")
+    organisation_text = models.TextField(blank=True, default="")
+
+    revisions = GenericRelation(
+        "wagtailcore.Revision",
+        content_type_field="base_content_type",
+        object_id_field="object_id",
+        related_query_name="localized_site_content",
+        for_concrete_model=False,
+    )
+
+    panels = [
+        FieldPanel("site"),
+        MultiFieldPanel(
+            [
+                FieldPanel("brand_label"),
+                FieldPanel("title_suffix"),
                 FieldPanel("site_name"),
                 FieldPanel("site_tagline"),
-                FieldPanel("footer_logo"),
             ],
             heading="Site identity",
         ),
-        FieldPanel("primary_navigation"),
         MultiFieldPanel(
             [
                 FieldPanel("contact_heading"),
                 FieldPanel("contact_name"),
                 FieldPanel("contact_context"),
-                FieldPanel("contact_phone"),
-                FieldPanel("contact_email"),
+                FieldPanel("footer_introduction"),
             ],
-            heading="Contact details",
+            heading="Contact content",
         ),
         FieldPanel("organisation_text"),
+        PublishingPanel(),
     ]
+
+    @classmethod
+    def for_site_and_locale(cls, site, locale):
+        return cls.objects.filter(site=site, locale=locale, live=True).first()
+
+    def __str__(self):
+        label = self.site_name or self.site.hostname
+        return f"{label} ({self.locale.language_code})"
+
+    def get_preview_template(self, request, mode_name):
+        return "base.html"
+
+    def get_preview_context(self, request, mode_name):
+        return {"localized_site_content": self}
+
+    class Meta(TranslatableMixin.Meta):
+        verbose_name = "localized site content"
+        verbose_name_plural = "localized site content"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("site", "locale"),
+                name="unique_site_content_per_site_locale",
+            )
+        ]
 
 
 class UserApprovalTaskState(TaskState):

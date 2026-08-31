@@ -158,7 +158,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hant"
 
 TIME_ZONE = "UTC"
 
@@ -266,9 +266,8 @@ WAGTAIL_SITE_NAME = "The Wagtail Bakery"
 WAGTAIL_I18N_ENABLED = True
 
 WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
+    ("zh-hant", "繁體中文"),
     ("en", "English"),
-    ("de", "German"),
-    ("ar", "Arabic"),
 ]
 
 WAGTAILIMAGES_AVIF_QUALITY = 60

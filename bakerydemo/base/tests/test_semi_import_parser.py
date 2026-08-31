@@ -125,6 +125,11 @@ class SemiImportParserTests(SimpleTestCase):
         )
         self.assertEqual(plan.settings.contact_name, "李先生")
         self.assertEqual(plan.settings.contact_context, "認驗證制度與流程")
+        self.assertEqual(plan.settings.brand_label, "認驗證制度")
+        self.assertEqual(
+            plan.settings.footer_introduction,
+            "若有合規輔導或技術疑問，歡迎聯絡推動辦公室。",
+        )
         self.assertEqual(plan.settings.contact_phone, "02-23116228 #202")
         topic_cards = plan.home.body[1].value["cards"]
         self.assertEqual(topic_cards[0]["link"].target_slug, "about")

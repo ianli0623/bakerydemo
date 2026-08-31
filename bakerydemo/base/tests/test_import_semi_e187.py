@@ -9,9 +9,14 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from PIL import Image as PILImage
 from wagtail.images import get_image_model
-from wagtail.models import Collection, Page, Site
+from wagtail.models import Collection, Locale, Page, Site
 
-from bakerydemo.base.models import HomePage, SiteSettings, StandardPage
+from bakerydemo.base.models import (
+    HomePage,
+    LocalizedSiteContent,
+    SiteSettings,
+    StandardPage,
+)
 from bakerydemo.base.semi_e187.parser import parse_source_site
 from bakerydemo.base.semi_e187.targets import TargetValidationError, validate_targets
 
@@ -105,6 +110,7 @@ class ImportSemiE187DryRunTests(TestCase):
                 )
             ),
             "settings": SiteSettings.objects.count(),
+            "localized_site_content": LocalizedSiteContent.objects.count(),
             "images": get_image_model().objects.count(),
             "collections": Collection.objects.count(),
         }
@@ -241,12 +247,25 @@ class ImportSemiE187DryRunTests(TestCase):
         self.assertEqual(self.home.featured_section_1_title, "")
 
         settings = SiteSettings.objects.get(site=self.site)
-        self.assertEqual(settings.title_suffix, "SEMI E187")
-        self.assertEqual(settings.contact_name, "李先生")
+        self.assertEqual(settings.contact_phone, "02-23116228 #202")
+        self.assertEqual(settings.contact_email, "MaxYCLee@itri.org.tw")
         self.assertEqual(
             [block.value.pk for block in settings.primary_navigation],
             [self.home.pk, *[page.pk for page in imported]],
         )
+        localized_content = LocalizedSiteContent.for_site_and_locale(
+            self.site,
+            Locale.objects.get(language_code="zh-hant"),
+        )
+        self.assertIsNotNone(localized_content)
+        self.assertEqual(localized_content.title_suffix, "SEMI E187")
+        self.assertEqual(localized_content.brand_label, "認驗證制度")
+        self.assertEqual(localized_content.contact_name, "李先生")
+        self.assertEqual(
+            localized_content.footer_introduction,
+            "若有合規輔導或技術疑問，歡迎聯絡推動辦公室。",
+        )
+        self.assertTrue(localized_content.revisions.exists())
         images = get_image_model().objects.filter(collection__name="SEMI E187")
         self.assertEqual(images.count(), 3)
         self.assertIn("建立頁面：4", output)

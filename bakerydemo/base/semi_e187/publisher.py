@@ -10,10 +10,15 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from PIL import Image as PILImage
 from wagtail.images import get_image_model
-from wagtail.models import Collection, Page, ReferenceIndex, Site
+from wagtail.models import Collection, Locale, Page, ReferenceIndex, Site
 from wagtail.search import index as search_index
 
-from bakerydemo.base.models import HomePage, SiteSettings, StandardPage
+from bakerydemo.base.models import (
+    HomePage,
+    LocalizedSiteContent,
+    SiteSettings,
+    StandardPage,
+)
 
 from .schema import ImportPlan, SourceLink
 from .targets import TargetSummary
@@ -248,15 +253,8 @@ def apply_site_settings(
         )
     settings = SiteSettings.for_site(sites[0])
     source = plan.settings
-    settings.title_suffix = source.title_suffix
-    settings.site_name = source.site_name
-    settings.site_tagline = source.site_tagline
-    settings.contact_heading = source.contact_heading
-    settings.contact_name = source.contact_name
-    settings.contact_context = source.contact_context
     settings.contact_phone = source.contact_phone
     settings.contact_email = source.contact_email
-    settings.organisation_text = source.organisation_text
     settings.footer_logo = images.get(source.footer_logo)
     settings.primary_navigation = [
         ("page", pages[slug]) for slug in source.navigation_slugs
@@ -264,6 +262,22 @@ def apply_site_settings(
     settings.save()
     if ReferenceIndex.is_indexed(settings._meta.model):
         ReferenceIndex.create_or_update_for_object(settings)
+
+    locale = Locale.objects.get_or_create(language_code="zh-hant")[0]
+    localized_content, _ = LocalizedSiteContent.objects.get_or_create(
+        site=sites[0],
+        locale=locale,
+    )
+    localized_content.brand_label = source.brand_label
+    localized_content.title_suffix = source.title_suffix
+    localized_content.site_name = source.site_name
+    localized_content.site_tagline = source.site_tagline
+    localized_content.contact_heading = source.contact_heading
+    localized_content.contact_name = source.contact_name
+    localized_content.contact_context = source.contact_context
+    localized_content.footer_introduction = source.footer_introduction
+    localized_content.organisation_text = source.organisation_text
+    localized_content.save_revision().publish()
 
 
 def refresh_import_indexes(pages: Iterable[Page]) -> None:

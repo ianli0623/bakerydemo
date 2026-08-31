@@ -50,6 +50,7 @@ ASSET_METADATA = {
 }
 PAGE_ORDER = ("about", "resources", "certification", "ecosystem")
 SETTINGS_FIELD_LIMITS = {
+    "brand label": 100,
     "site name": 255,
     "site tagline": 255,
     "contact heading": 255,
@@ -789,7 +790,9 @@ def _parse_settings(html: str, assets: Mapping[str, SourceAsset]) -> SiteSetting
     soup = parse_html(html)
     heading = require_one(soup, "header#home h1", source_name)
     heading_text = _text(heading, source_name, "hero heading")
-    site_name = heading_text.partition(" 與認驗證制度")[0]
+    site_name, separator, brand_label = heading_text.partition(" 與")
+    if not separator or not brand_label:
+        raise SourceValidationError(f"{source_name}：hero heading 缺少品牌標籤")
     site_tagline = _text(
         _next_sibling(heading, "p", source_name, "hero tagline"),
         source_name,
@@ -825,6 +828,7 @@ def _parse_settings(html: str, assets: Mapping[str, SourceAsset]) -> SiteSetting
         raise SourceValidationError(f"{source_name}：contact email 格式不符") from error
     return SiteSettingsImport(
         title_suffix="SEMI E187",
+        brand_label=_settings_text(brand_label, "brand label", source_name),
         site_name=_settings_text(site_name, "site name", source_name),
         site_tagline=_settings_text(site_tagline, "site tagline", source_name),
         contact_heading=_settings_text(
@@ -844,6 +848,11 @@ def _parse_settings(html: str, assets: Mapping[str, SourceAsset]) -> SiteSetting
         ),
         contact_phone=_settings_text(phone, "contact phone", source_name),
         contact_email=_settings_text(email, "contact email", source_name),
+        footer_introduction=_text(
+            paragraphs[0],
+            source_name,
+            "footer introduction",
+        ),
         organisation_text=_text(paragraphs[-1], source_name, "organisation text"),
         footer_logo=("adi-logo-white.png" if "adi-logo-white.png" in assets else None),
         navigation_slugs=("", *PAGE_ORDER),
