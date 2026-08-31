@@ -1,0 +1,47 @@
+{
+  "accessibility": {
+    "skipToContent": "Skip to main content",
+    "toolbar": "Website accessibility tools",
+    "fontSize": "Text size",
+    "fontSmaller": "Decrease text size",
+    "fontReset": "Reset text size",
+    "fontLarger": "Increase text size"
+  },
+  "language": {
+    "label": "Language",
+    "traditionalChinese": "繁體中文",
+    "english": "English"
+  },
+  "navigation": {
+    "label": "Primary navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "home": "Home",
+    "contact": "Contact us"
+  },
+  "contact": {
+    "phone": "Phone",
+    "email": "Email"
+  },
+  "status": {
+    "loading": "Loading content…",
+    "error": "Unable to load the content.",
+    "retry": "Try again",
+    "unavailable": "Currently unavailable",
+    "notFound": "The requested published page could not be found."
+  },
+  "documents": {
+    "number": "No.",
+    "title": "Document",
+    "summary": "Summary",
+    "status": "Status"
+  },
+  "embed": {
+    "openMedia": "Open external media",
+    "videoTitle": "Embedded video"
+  },
+  "mobile": {
+    "menu": "Mobile menu",
+    "language": "Switch language"
+  }
+}

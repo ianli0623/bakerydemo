@@ -5,6 +5,11 @@ import type {
   BakeryRendition,
   BakerySiteSettings
 } from '../../shared/types/bakery.ts'
+import {
+  localizedPagePath,
+  normalizeBakeryLocale,
+  type BakeryLocale
+} from '../../shared/utils/locale.ts'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -54,13 +59,45 @@ function isLocalPath(value: unknown): value is string {
   }
 }
 
-function isNavigationItem(value: unknown): value is BakeryNavigationItem {
+function isNavigationItem(
+  value: unknown,
+  locale: BakeryLocale
+): value is BakeryNavigationItem {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'number' ||
+    !Number.isInteger(value.id) ||
+    !isString(value.title) ||
+    !isString(value.slug) ||
+    !isLocalPath(value.path)
+  ) {
+    return false
+  }
+
+  try {
+    return value.path === localizedPagePath(locale, value.slug)
+  } catch {
+    return false
+  }
+}
+
+function getPayloadLocale(input: Record<string, unknown>): BakeryLocale | null {
+  try {
+    return normalizeBakeryLocale(input.locale)
+  } catch {
+    return null
+  }
+}
+
+function hasLocalizedHomePath(
+  input: Record<string, unknown>,
+  locale: BakeryLocale
+): boolean {
   return (
-    isRecord(value) &&
-    typeof value.id === 'number' &&
-    Number.isInteger(value.id) &&
-    isString(value.title) &&
-    isLocalPath(value.path)
+    typeof input.home_page_id === 'number' &&
+    Number.isInteger(input.home_page_id) &&
+    input.home_page_id > 0 &&
+    input.home_path === localizedPagePath(locale)
   )
 }
 
@@ -70,8 +107,14 @@ export function isBakerySiteSettings(
   if (!isRecord(input) || !isRecord(input.contact)) {
     return false
   }
+  const locale = getPayloadLocale(input)
+  if (!locale || !hasLocalizedHomePath(input, locale)) {
+    return false
+  }
 
   return (
+    isString(input.brand_label) &&
+    isString(input.title_suffix) &&
     isString(input.site_name) &&
     isString(input.site_tagline) &&
     isString(input.contact.heading) &&
@@ -80,10 +123,11 @@ export function isBakerySiteSettings(
     isString(input.contact.phone) &&
     isString(input.contact.phone_href) &&
     isString(input.contact.email) &&
+    isString(input.footer_introduction) &&
     isString(input.organisation_text) &&
     (input.footer_logo === null || isBakeryImage(input.footer_logo)) &&
     Array.isArray(input.navigation) &&
-    input.navigation.every(isNavigationItem)
+    input.navigation.every((item) => isNavigationItem(item, locale))
   )
 }
 

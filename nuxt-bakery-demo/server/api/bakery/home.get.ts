@@ -6,17 +6,22 @@ import type {
 import { defineEventHandler } from 'h3'
 import { fetchBakery } from '../../utils/bakery.ts'
 import { getUpstreamStatus } from '../../utils/bakery-core.ts'
+import { getBakeryLocale } from '../../utils/bakery-locale.ts'
 import {
-  BAKERY_HOME_PAGE_ID,
   enrichHomePage,
   getHomeReferenceIds
 } from '../../utils/bakery-pages.ts'
+import { toBakerySiteSettings } from '../../utils/bakery-settings.ts'
 
 export default defineEventHandler(
   async (event): Promise<BakeryHomeViewModel> => {
+    const locale = getBakeryLocale(event)
+    const settings = toBakerySiteSettings(
+      await fetchBakery<unknown>(event, '/api/site-settings/', { locale })
+    )
     const home = await fetchBakery<BakeryHomePage>(
       event,
-      `/api/v2/pages/${BAKERY_HOME_PAGE_ID}/`,
+      `/api/v2/pages/${settings.home_page_id}/`,
       { fields: '*' }
     )
 
@@ -39,7 +44,8 @@ export default defineEventHandler(
 
     return enrichHomePage(
       home,
-      featuredPages.filter((page): page is BakeryPageSummary => page !== null)
+      featuredPages.filter((page): page is BakeryPageSummary => page !== null),
+      locale
     )
   }
 )

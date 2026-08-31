@@ -46,10 +46,11 @@ const blog = {
   title: 'Blog'
 }
 
-test('standard page queries restrict Wagtail requests to the approved scope', () => {
-  assert.deepEqual(createStandardPageQuery('test-page'), {
+test('standard page queries use the selected localized home', () => {
+  assert.deepEqual(createStandardPageQuery('test-page', 160, 'en'), {
     type: 'base.StandardPage',
-    child_of: '60',
+    child_of: '160',
+    locale: 'en',
     slug: 'test-page',
     fields: '*',
     limit: '1'
@@ -85,12 +86,13 @@ test('getFeaturedPageIds returns unique references without menu filtering', () =
 test('getHomeReferenceIds includes the hero CTA and de-duplicates page lookups', () => {
   const home = {
     hero_cta_link: { id: 93, title: '驗證與合規' },
+    secondary_hero_cta_link: { id: 94, title: '合規設備清單' },
     featured_section_1: { id: 61, title: 'Blog' },
     featured_section_2: { id: 93, title: '驗證與合規' },
     featured_section_3: null
   } as BakeryHomePage
 
-  assert.deepEqual(getHomeReferenceIds(home), [93, 61])
+  assert.deepEqual(getHomeReferenceIds(home), [93, 94, 61])
 })
 
 test('validateSlug trims safe slugs and rejects missing or unsafe values', () => {
@@ -113,7 +115,7 @@ test('isMissingBakeryPageError recognizes client fetch error shapes', () => {
   assert.equal(isMissingBakeryPageError(new Error('offline')), false)
 })
 
-test('enrichHomePage attaches published URLs to featured references', () => {
+test('enrichHomePage attaches deterministic localized paths to references', () => {
   const home = {
     featured_section_1: {
       id: 61,
@@ -128,33 +130,33 @@ test('enrichHomePage attaches published URLs to featured references', () => {
   } as BakeryHomePage
 
   assert.deepEqual(
-    enrichHomePage(home, [about, blog, testPage]).featuredSections,
-    [{ id: 61, title: 'Blog', url: 'http://127.0.0.1:8000/blog/' }]
+    enrichHomePage(home, [about, blog, testPage], 'en').featuredSections,
+    [{ id: 61, title: 'Blog', url: '/en/blog/' }]
   )
 })
 
-test('toNuxtPagePath localizes Wagtail page URLs and rejects unsafe schemes', () => {
+test('toNuxtPagePath uses localized slugs and rejects unsafe slugs', () => {
   assert.equal(
     toNuxtPagePath({
       id: 91,
       title: '驗證與合規',
       meta: {
         type: 'base.StandardPage',
-        html_url:
-          'http://127.0.0.1:8000/certification/?from=hero#vendor-process'
+        slug: 'certification',
+        html_url: 'http://127.0.0.1:8000/ignored/'
       }
-    }),
-    '/certification/?from=hero#vendor-process'
+    }, 'en'),
+    '/en/certification/'
   )
   assert.equal(
     toNuxtPagePath({
       id: 92,
       title: 'Unsafe',
-      meta: { type: 'base.StandardPage', html_url: 'javascript:alert(1)' }
-    }),
+      meta: { type: 'base.StandardPage', slug: '../admin' }
+    }, 'zh-hant'),
     null
   )
-  assert.equal(toNuxtPagePath(null), null)
+  assert.equal(toNuxtPagePath(null, 'en'), null)
 })
 
 test('enrichHomePage exposes a localized hero CTA path', () => {
@@ -164,7 +166,8 @@ test('enrichHomePage exposes a localized hero CTA path', () => {
       title: '驗證與合規',
       meta: {
         type: 'base.StandardPage',
-        html_url: 'http://127.0.0.1:8000/certification/'
+        slug: 'certification',
+        html_url: 'http://127.0.0.1:8000/ignored/'
       }
     },
     featured_section_1: null,
@@ -175,7 +178,10 @@ test('enrichHomePage exposes a localized hero CTA path', () => {
     featured_section_3_title: ''
   } as BakeryHomePage
 
-  assert.equal(enrichHomePage(home, []).heroCtaPath, '/certification/')
+  assert.equal(
+    enrichHomePage(home, [], 'zh-hant').heroCtaPath,
+    '/certification/'
+  )
 })
 
 test('enrichHomePage resolves a hero CTA whose compact reference has no URL', () => {
@@ -199,10 +205,11 @@ test('enrichHomePage resolves a hero CTA whose compact reference has no URL', ()
       title: '驗證與合規',
       meta: {
         type: 'base.StandardPage',
-        html_url: 'http://127.0.0.1:8000/certification/'
+        slug: 'certification',
+        html_url: 'http://127.0.0.1:8000/ignored/'
       }
-    }]).heroCtaPath,
-    '/certification/'
+    }], 'en').heroCtaPath,
+    '/en/certification/'
   )
 })
 

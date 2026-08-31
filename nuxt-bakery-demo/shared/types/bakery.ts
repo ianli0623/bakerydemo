@@ -117,6 +117,7 @@ export interface BakeryCaseStudyBlock {
     challenge: string
     solution_heading: string
     solution: string
+    security_controls_heading: string
     security_controls: Array<{ title: string; summary: string }>
     outcome_image: BakeryImage
     outcome_caption: string
@@ -163,9 +164,13 @@ export type BakeryStreamBlock =
 export type BakeryPageReference = BakeryPageSummary
 
 export interface BakeryHomePage extends BakeryPageSummary {
+  hero_badge: string
   hero_text: string
   hero_cta: string
   hero_cta_link: BakeryPageReference | null
+  secondary_hero_cta: string
+  secondary_hero_cta_link: BakeryPageReference | null
+  secondary_hero_cta_fragment: string
   body: BakeryStreamBlock[]
   lead_title: string
   lead_text: string | null
@@ -181,6 +186,11 @@ export interface BakeryHomePage extends BakeryPageSummary {
 
 export interface BakeryStandardPage extends BakeryPageSummary {
   introduction: string
+  section_kicker: string
+  section_heading: string
+  secondary_section_kicker: string
+  secondary_section_heading: string
+  secondary_section_introduction: string
   body: BakeryStreamBlock[]
   image_hero: BakeryRendition | null
 }
@@ -188,10 +198,16 @@ export interface BakeryStandardPage extends BakeryPageSummary {
 export interface BakeryNavigationItem {
   id: number
   title: string
+  slug: string
   path: string
 }
 
 export interface BakerySiteSettings {
+  locale: BakeryLocale
+  home_page_id: number
+  home_path: string
+  brand_label: string
+  title_suffix: string
   site_name: string
   site_tagline: string
   contact: {
@@ -202,6 +218,7 @@ export interface BakerySiteSettings {
     phone_href: string
     email: string
   }
+  footer_introduction: string
   organisation_text: string
   footer_logo: BakeryImage | null
   navigation: BakeryNavigationItem[]
@@ -216,4 +233,6 @@ export interface BakeryFeaturedSection {
 export interface BakeryHomeViewModel extends BakeryHomePage {
   featuredSections: BakeryFeaturedSection[]
   heroCtaPath: string | null
+  secondaryHeroCtaPath: string | null
 }
+import type { BakeryLocale } from '../utils/locale.ts'

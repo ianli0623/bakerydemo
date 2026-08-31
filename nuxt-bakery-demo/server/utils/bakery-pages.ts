@@ -6,8 +6,10 @@ import type {
   BakeryPageSummary
 } from '../../shared/types/bakery.ts'
 import { isValidStandardPageSlug } from '../../shared/utils/bakery.ts'
-
-export const BAKERY_HOME_PAGE_ID = 60
+import {
+  localizedPagePath,
+  type BakeryLocale
+} from '../../shared/utils/locale.ts'
 
 export async function collectPaginatedItems<T>(
   fetchPage: (offset: number) => Promise<BakeryPageList<T>>
@@ -41,18 +43,25 @@ export function getFeaturedPageIds(home: BakeryHomePage): number[] {
 }
 
 export function getHomeReferenceIds(home: BakeryHomePage): number[] {
-  return [home.hero_cta_link?.id, ...getFeaturedPageIds(home)].filter(
+  return [
+    home.hero_cta_link?.id,
+    home.secondary_hero_cta_link?.id,
+    ...getFeaturedPageIds(home)
+  ].filter(
     (id, index, ids): id is number =>
       typeof id === 'number' && ids.indexOf(id) === index
   )
 }
 
 export function createStandardPageQuery(
-  slug: string
+  slug: string,
+  homePageId: number,
+  locale: BakeryLocale
 ): Record<string, string> {
   return {
     type: 'base.StandardPage',
-    child_of: String(BAKERY_HOME_PAGE_ID),
+    child_of: String(homePageId),
+    locale,
     slug: validateSlug(slug),
     fields: '*',
     limit: '1'
@@ -70,27 +79,21 @@ export function validateSlug(value: string | undefined): string {
 }
 
 export function toNuxtPagePath(
-  reference: BakeryPageSummary | null
+  reference: BakeryPageSummary | null,
+  locale: BakeryLocale
 ): string | null {
-  const htmlUrl = reference?.meta.html_url
-  if (!htmlUrl) {
+  const slug = reference?.meta.slug
+  if (!isValidStandardPageSlug(slug)) {
     return null
   }
 
-  try {
-    const url = new URL(htmlUrl, 'http://bakery.local')
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      return null
-    }
-    return `${url.pathname}${url.search}${url.hash}`
-  } catch {
-    return null
-  }
+  return localizedPagePath(locale, slug)
 }
 
 export function enrichHomePage(
   home: BakeryHomePage,
-  topLevelPages: BakeryPageSummary[]
+  topLevelPages: BakeryPageSummary[],
+  locale: BakeryLocale
 ): BakeryHomeViewModel {
   const pageById = new Map(topLevelPages.map((page) => [page.id, page]))
   const heroCtaReference = home.hero_cta_link
@@ -110,7 +113,8 @@ export function enrichHomePage(
       }
 
       const page = pageById.get(reference.id)
-      if (!page?.meta.html_url) {
+      const path = toNuxtPagePath(page ?? null, locale)
+      if (!path) {
         return []
       }
 
@@ -118,7 +122,7 @@ export function enrichHomePage(
         {
           id: reference.id,
           title: configuredTitle || reference.title,
-          url: page.meta.html_url
+          url: path
         }
       ]
     }
@@ -127,7 +131,17 @@ export function enrichHomePage(
   return {
     ...home,
     featuredSections,
-    heroCtaPath: toNuxtPagePath(heroCtaPage)
+    heroCtaPath: toNuxtPagePath(heroCtaPage, locale),
+    secondaryHeroCtaPath: (() => {
+      const reference = home.secondary_hero_cta_link
+      const page = reference
+        ? pageById.get(reference.id) ?? reference
+        : null
+      const path = toNuxtPagePath(page, locale)
+      return path && home.secondary_hero_cta_fragment
+        ? `${path}#${home.secondary_hero_cta_fragment}`
+        : path
+    })()
   }
 }
 

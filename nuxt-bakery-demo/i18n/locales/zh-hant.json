@@ -1,0 +1,47 @@
+{
+  "accessibility": {
+    "skipToContent": "跳到主要內容",
+    "toolbar": "網站輔助工具",
+    "fontSize": "字級",
+    "fontSmaller": "縮小字級",
+    "fontReset": "還原字級",
+    "fontLarger": "放大字級"
+  },
+  "language": {
+    "label": "語言",
+    "traditionalChinese": "繁體中文",
+    "english": "English"
+  },
+  "navigation": {
+    "label": "主要導覽",
+    "openMenu": "開啟選單",
+    "closeMenu": "關閉選單",
+    "home": "首頁",
+    "contact": "聯絡我們"
+  },
+  "contact": {
+    "phone": "電話",
+    "email": "信箱"
+  },
+  "status": {
+    "loading": "內容載入中…",
+    "error": "內容載入失敗。",
+    "retry": "重新載入",
+    "unavailable": "目前無法使用",
+    "notFound": "找不到指定的已發布頁面。"
+  },
+  "documents": {
+    "number": "編號",
+    "title": "文件名稱",
+    "summary": "內容摘要",
+    "status": "狀態"
+  },
+  "embed": {
+    "openMedia": "開啟外部媒體",
+    "videoTitle": "嵌入影片"
+  },
+  "mobile": {
+    "menu": "行動版選單",
+    "language": "切換語言"
+  }
+}
