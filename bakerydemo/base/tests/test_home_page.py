@@ -3,7 +3,7 @@ from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase
 from wagtail.test.utils.form_data import nested_form_data, streamfield
 
-from bakerydemo.base.models import HomePage
+from bakerydemo.base.models import HomePage, StandardPage
 
 
 class HomePageRenderTest(WagtailPageTestCase):
@@ -66,3 +66,27 @@ class HomePageRenderTest(WagtailPageTestCase):
         )
 
         self.assertCanCreate(self.root, HomePage, home_page_data)
+
+    def test_semi_editorial_fields_are_exposed_to_the_api(self):
+        home_fields = {field.name for field in HomePage.api_fields}
+        page_fields = {field.name for field in StandardPage.api_fields}
+
+        self.assertTrue(
+            {
+                "hero_badge",
+                "secondary_hero_cta",
+                "secondary_hero_cta_link",
+                "secondary_hero_cta_fragment",
+            }
+            <= home_fields
+        )
+        self.assertTrue(
+            {
+                "section_kicker",
+                "section_heading",
+                "secondary_section_kicker",
+                "secondary_section_heading",
+                "secondary_section_introduction",
+            }
+            <= page_fields
+        )

@@ -271,6 +271,7 @@ class StructuredContentBlockTests(TestCase):
                 "challenge",
                 "solution_heading",
                 "solution",
+                "security_controls_heading",
                 "security_controls",
                 "outcome_image",
                 "outcome_caption",
@@ -322,6 +323,7 @@ class StructuredContentBlockTests(TestCase):
                     "challenge": "<p>建立設備安全基線。</p>",
                     "solution_heading": "解決方案",
                     "solution": "<p>完成合規驗證。</p>",
+                    "security_controls_heading": "資安控制重點",
                     "security_controls": [
                         {"title": "帳號安全", "summary": "強化權限管理"}
                     ],
@@ -348,6 +350,9 @@ class StructuredContentBlockTests(TestCase):
             self.assertIn("<dl", html)
             self.assertEqual(html.count("<figure"), 2)
             self.assertIn("建立設備安全基線", html)
+            self.assertEqual(
+                representation["security_controls_heading"], "資安控制重點"
+            )
 
     def test_card_grid_fallback_is_semantic_and_disables_placeholder_links(self):
         block = blocks.CardGridBlock()

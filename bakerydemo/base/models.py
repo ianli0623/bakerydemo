@@ -240,6 +240,19 @@ class StandardPage(Page):
     """
 
     introduction = models.TextField(help_text="Text to describe the page", blank=True)
+    section_kicker = models.CharField(max_length=100, blank=True, default="")
+    section_heading = models.CharField(max_length=255, blank=True, default="")
+    secondary_section_kicker = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    secondary_section_heading = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    secondary_section_introduction = models.TextField(blank=True, default="")
     image = models.ForeignKey(
         "wagtailimages.Image",
         null=True,
@@ -253,12 +266,32 @@ class StandardPage(Page):
     )
     content_panels = Page.content_panels + [
         FieldPanel("introduction"),
+        MultiFieldPanel(
+            [
+                FieldPanel("section_kicker"),
+                FieldPanel("section_heading"),
+            ],
+            heading="Primary section heading",
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("secondary_section_kicker"),
+                FieldPanel("secondary_section_heading"),
+                FieldPanel("secondary_section_introduction"),
+            ],
+            heading="Secondary section heading",
+        ),
         FieldPanel("body"),
         FieldPanel("image"),
     ]
 
     api_fields = [
         APIField("introduction"),
+        APIField("section_kicker"),
+        APIField("section_heading"),
+        APIField("secondary_section_kicker"),
+        APIField("secondary_section_heading"),
+        APIField("secondary_section_introduction"),
         APIField("image"),
         APIField("body"),
         APIField(
@@ -280,6 +313,7 @@ class HomePage(Page):
     """
 
     # Hero section of HomePage
+    hero_badge = models.CharField(max_length=255, blank=True, default="")
     image = models.ForeignKey(
         "wagtailimages.Image",
         null=True,
@@ -304,6 +338,26 @@ class HomePage(Page):
         related_name="+",
         verbose_name="Hero CTA link",
         help_text="Choose a page to link to for the Call to Action",
+    )
+    secondary_hero_cta = models.CharField(
+        verbose_name="Secondary hero CTA",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    secondary_hero_cta_link = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Secondary hero CTA link",
+    )
+    secondary_hero_cta_fragment = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Optional anchor ID without the leading #.",
     )
 
     # Body section of the HomePage
@@ -387,11 +441,19 @@ class HomePage(Page):
         MultiFieldPanel(
             [
                 FieldPanel("image"),
+                FieldPanel("hero_badge"),
                 FieldPanel("hero_text", required_on_save=True),
                 MultiFieldPanel(
                     [
                         FieldPanel("hero_cta"),
                         FieldPanel("hero_cta_link"),
+                    ]
+                ),
+                MultiFieldPanel(
+                    [
+                        FieldPanel("secondary_hero_cta"),
+                        FieldPanel("secondary_hero_cta_link"),
+                        FieldPanel("secondary_hero_cta_fragment"),
                     ]
                 ),
             ],
@@ -438,9 +500,13 @@ class HomePage(Page):
 
     api_fields = [
         APIField("image"),
+        APIField("hero_badge"),
         APIField("hero_text"),
         APIField("hero_cta"),
         APIField("hero_cta_link"),
+        APIField("secondary_hero_cta"),
+        APIField("secondary_hero_cta_link"),
+        APIField("secondary_hero_cta_fragment"),
         APIField("body"),
         APIField("lead_image"),
         APIField("lead_title"),

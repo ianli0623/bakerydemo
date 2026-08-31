@@ -45,6 +45,42 @@ class SemiImportParserTests(SimpleTestCase):
     def parse(self):
         return parse_source_site(self.html_dir, self.asset_dir)
 
+    def test_preserves_every_visible_section_heading_for_editorial_translation(self):
+        plan = self.parse()
+
+        self.assertEqual(plan.home.hero_badge, "標準認知 × 技術資源 × 驗證合規")
+        self.assertEqual(plan.home.secondary_hero_cta, "合規設備清單")
+        self.assertEqual(plan.home.secondary_hero_cta_link.target_slug, "certification")
+        self.assertEqual(plan.home.secondary_hero_cta_link.fragment, "certified-list")
+        self.assertEqual(plan.page("about").section_kicker, "ABOUT SEMI E187")
+        self.assertEqual(plan.page("about").section_heading, "關於標準與背景介紹")
+        self.assertEqual(
+            plan.page("certification").section_heading,
+            "驗證與合規專區",
+        )
+        self.assertEqual(
+            plan.page("ecosystem").secondary_section_kicker,
+            "DEMONSTRATION SITES",
+        )
+        self.assertEqual(
+            plan.page("ecosystem").secondary_section_heading,
+            "設備廠商導入應用案例",
+        )
+        self.assertEqual(
+            plan.page("ecosystem").secondary_section_introduction,
+            "提供 SEMI E187 導入實務示範。",
+        )
+        cases = [
+            block for block in plan.page("ecosystem").body if block.type == "case_study"
+        ]
+        self.assertTrue(cases)
+        self.assertTrue(
+            all(
+                case.value["security_controls_heading"] == "資安控制重點"
+                for case in cases
+            )
+        )
+
     def test_parses_exact_page_order_block_sequences_and_counts(self):
         plan = self.parse()
 

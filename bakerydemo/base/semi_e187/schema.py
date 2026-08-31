@@ -51,9 +51,12 @@ class HomeImport:
     title: str
     seo_title: str
     search_description: str
+    hero_badge: str
     hero_text: str
     hero_cta: str
     hero_cta_link: SourceLink
+    secondary_hero_cta: str
+    secondary_hero_cta_link: SourceLink
     body: tuple[BlockImport, ...]
 
 
@@ -64,6 +67,11 @@ class PageImport:
     seo_title: str
     search_description: str
     introduction: str
+    section_kicker: str
+    section_heading: str
+    secondary_section_kicker: str
+    secondary_section_heading: str
+    secondary_section_introduction: str
     body: tuple[BlockImport, ...]
 
 

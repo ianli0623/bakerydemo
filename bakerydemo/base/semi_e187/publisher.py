@@ -205,9 +205,13 @@ def apply_page_content(
     home.title = plan.home.title
     home.seo_title = plan.home.seo_title
     home.search_description = plan.home.search_description
+    home.hero_badge = plan.home.hero_badge
     home.hero_text = plan.home.hero_text
     home.hero_cta = plan.home.hero_cta
     home.hero_cta_link = pages[plan.home.hero_cta_link.target_slug]
+    home.secondary_hero_cta = plan.home.secondary_hero_cta
+    home.secondary_hero_cta_link = pages[plan.home.secondary_hero_cta_link.target_slug]
+    home.secondary_hero_cta_fragment = plan.home.secondary_hero_cta_link.fragment
     home.body = _stream_value(plan.home.body, pages, images)
     home.lead_image = None
     home.lead_title = ""
@@ -222,6 +226,11 @@ def apply_page_content(
         page.seo_title = page_import.seo_title
         page.search_description = page_import.search_description
         page.introduction = page_import.introduction
+        page.section_kicker = page_import.section_kicker
+        page.section_heading = page_import.section_heading
+        page.secondary_section_kicker = page_import.secondary_section_kicker
+        page.secondary_section_heading = page_import.secondary_section_heading
+        page.secondary_section_introduction = page_import.secondary_section_introduction
         page.image = None
         page.body = _stream_value(page_import.body, pages, images)
         page.show_in_menus = True

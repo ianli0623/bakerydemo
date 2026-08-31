@@ -224,6 +224,7 @@ class CaseStudyBlock(StructBlock):
     challenge = RichTextBlock(required=True)
     solution_heading = CharBlock(required=True)
     solution = RichTextBlock(required=True)
+    security_controls_heading = CharBlock(required=True)
     security_controls = ListBlock(SecurityControlBlock(), min_num=1)
     outcome_image = ImageChooserBlock(required=True)
     outcome_caption = CharBlock(required=False)
