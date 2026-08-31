@@ -10,6 +10,7 @@ import {
 const route = useRoute()
 const { locale, t } = useI18n()
 const localePath = useLocalePath()
+const switchLocalePath = useSwitchLocalePath()
 const localeQuery = computed(() => ({ locale: locale.value }))
 const { data: settings, error: settingsError } =
   await useFetch<BakerySiteSettings>('/api/bakery/site-settings', {
@@ -52,6 +53,8 @@ const footerLogo = computed(() =>
     <a class="skip-link" href="#main-content">
       {{ t('accessibility.skipToContent') }}
     </a>
+
+    <AccessibilityToolbar />
 
     <header class="site-header">
       <div class="site-header-inner">
@@ -105,6 +108,29 @@ const footerLogo = computed(() =>
           <a class="nav-contact" href="#contact" @click="closeNavigation('route')">
             {{ t('navigation.contact') }}
           </a>
+          <div
+            class="mobile-language-switch"
+            role="group"
+            :aria-label="t('mobile.language')"
+          >
+            <span>{{ t('language.label') }}</span>
+            <NuxtLink
+              :to="switchLocalePath('zh-hant')"
+              lang="zh-Hant"
+              :aria-current="locale === 'zh-hant' ? 'page' : undefined"
+              @click="closeNavigation('route')"
+            >
+              {{ t('language.traditionalChinese') }}
+            </NuxtLink>
+            <NuxtLink
+              :to="switchLocalePath('en')"
+              lang="en"
+              :aria-current="locale === 'en' ? 'page' : undefined"
+              @click="closeNavigation('route')"
+            >
+              {{ t('language.english') }}
+            </NuxtLink>
+          </div>
           <span v-if="settingsError" class="nav-status" role="status">
             {{ t('status.navigationError') }}
           </span>
