@@ -1,6 +1,7 @@
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
 from types import MappingProxyType
@@ -84,20 +85,34 @@ def _next_sibling(tag: Tag, name: str, source_name: str, section: str) -> Tag:
     return sibling
 
 
-def _page_header(soup, source_name: str) -> tuple[str, str, str]:
-    title = require_text(soup, "header h1", source_name)
-    heading = require_one(soup, "header h1", source_name)
+def _page_header(
+    soup,
+    source_name: str,
+    section_heading: Tag,
+) -> tuple[str, str, str]:
+    heading = soup.select_one("header h1")
+    if heading is not None:
+        title = _text(heading, source_name, "header heading")
+        introduction_tag = heading.find_next_sibling("p")
+    else:
+        title = require_text(soup, 'a[aria-current="page"]', source_name)
+        introduction_tag = section_heading.find_next_sibling(["p", "div"])
+    if introduction_tag is None:
+        raise SourceValidationError(f"{source_name}：page introduction 缺少 p 或 div")
     introduction = _text(
-        _next_sibling(heading, "p", source_name, "header introduction"),
+        introduction_tag,
         source_name,
-        "header introduction",
+        "page introduction",
     )
     seo_title = require_text(soup, "title", source_name)
     return title, introduction, seo_title
 
 
 def _section_kicker(section: Tag, source_name: str) -> str:
-    return require_text(section, ".section-kicker", source_name)
+    kicker = section.select_one(".section-kicker")
+    if kicker is None:
+        raise SourceValidationError(f"{source_name}：.section-kicker 預期至少 1 個")
+    return _text(kicker, source_name, "section kicker")
 
 
 def _link(tag: Tag, current_slug: str) -> SourceLink:
@@ -106,6 +121,20 @@ def _link(tag: Tag, current_slug: str) -> SourceLink:
         str(tag.get("href", "")),
         current_slug,
     )
+
+
+HOME_FRAGMENT_TARGETS = {
+    "certified-list": "certification",
+    "documents-table": "resources",
+}
+
+
+def _home_link(tag: Tag) -> SourceLink:
+    link = _link(tag, "")
+    target_slug = HOME_FRAGMENT_TARGETS.get(link.fragment)
+    if link.target_slug == "" and target_slug is not None:
+        return replace(link, target_slug=target_slug)
+    return link
 
 
 def _card_from_heading(heading: Tag, current_slug: str, number: str = "") -> dict:
@@ -278,8 +307,8 @@ def parse_home(html: str) -> HomeImport:
     header_links = header.find_all("a")
     if len(header_links) < 2:
         raise SourceValidationError(f"{source_name}：hero CTA 連結少於 2 個")
-    hero_cta = _link(header_links[0], "")
-    secondary_hero_cta = _link(header_links[1], "")
+    hero_cta = _home_link(header_links[0])
+    secondary_hero_cta = _home_link(header_links[1])
 
     news = require_one(header, 'aside[aria-label="最新消息"]', source_name)
     news_links = news.find_all("a")
@@ -294,42 +323,42 @@ def parse_home(html: str) -> HomeImport:
                 "eyebrow": "最新消息",
                 "title": _text(parts[1], source_name, "最新消息標題"),
                 "summary": _text(parts[1], source_name, "最新消息標題"),
-                "link": _link(link_tag, ""),
+                "link": _home_link(link_tag),
             }
         )
 
-    topics = require_one(soup, "section#site-sections", source_name)
-    topic_links = topics.find_all("a")
-    require_count(topic_links, 4, source_name, "site-sections")
-    topic_cards = []
-    for index, link_tag in enumerate(topic_links, start=1):
-        topic_cards.append(
-            _card_from_heading(
-                require_one(link_tag, "h3", source_name),
-                "",
-                f"{index:02d}",
+    body = [_card_grid("最新消息", "", news_cards, "two")]
+    topics = soup.select_one("section#site-sections")
+    if topics is not None:
+        topic_links = topics.find_all("a")
+        require_count(topic_links, 4, source_name, "site-sections")
+        topic_cards = []
+        for index, link_tag in enumerate(topic_links, start=1):
+            topic_cards.append(
+                _card_from_heading(
+                    require_one(link_tag, "h3", source_name),
+                    "",
+                    f"{index:02d}",
+                )
             )
-        )
-
-    body = (
-        _card_grid("最新消息", "", news_cards, "two"),
-        _card_grid(
-            require_text(topics, "h2", source_name),
-            _text(
-                _next_sibling(
-                    require_one(topics, "h2", source_name),
-                    "p",
+        body.append(
+            _card_grid(
+                require_text(topics, "h2", source_name),
+                _text(
+                    _next_sibling(
+                        require_one(topics, "h2", source_name),
+                        "p",
+                        source_name,
+                        "site-sections introduction",
+                    ),
                     source_name,
                     "site-sections introduction",
                 ),
-                source_name,
-                "site-sections introduction",
-            ),
-            topic_cards,
-            "four",
-            "EXPLORE THE SITE",
-        ),
-    )
+                topic_cards,
+                "four",
+                "EXPLORE THE SITE",
+            )
+        )
     return HomeImport(
         title=title,
         seo_title=require_text(soup, "title", source_name),
@@ -340,16 +369,20 @@ def parse_home(html: str) -> HomeImport:
         hero_cta_link=hero_cta,
         secondary_hero_cta=secondary_hero_cta.label,
         secondary_hero_cta_link=secondary_hero_cta,
-        body=body,
+        body=tuple(body),
     )
 
 
 def parse_about(html: str) -> PageImport:
     source_name = "about.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#about", source_name)
     about_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        about_heading,
+    )
     narrative = _next_sibling(
         about_heading,
         "div",
@@ -388,9 +421,13 @@ def parse_about(html: str) -> PageImport:
 def parse_resources(html: str) -> PageImport:
     source_name = "resources.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#resources", source_name)
     section_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        section_heading,
+    )
     section_intro = _text(
         _next_sibling(
             section_heading,
@@ -473,9 +510,13 @@ def parse_resources(html: str) -> PageImport:
 def parse_certification(html: str) -> PageImport:
     source_name = "certification.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#certification", source_name)
     overview_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        overview_heading,
+    )
     overview = _next_sibling(
         overview_heading,
         "p",
@@ -724,9 +765,13 @@ def parse_ecosystem(
 ) -> PageImport:
     source_name = "ecosystem.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#ecosystem", source_name)
     section_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        section_heading,
+    )
     overview_headings = section.find_all("h4")
     require_count(overview_headings, 2, source_name, "ecosystem overview cards")
     overview_cards = [
