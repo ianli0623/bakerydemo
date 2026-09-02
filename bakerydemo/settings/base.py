@@ -162,6 +162,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+ACCOUNT_SECURITY_PASSWORD_MAX_AGE_DAYS = 90
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/
