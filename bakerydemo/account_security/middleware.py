@@ -7,7 +7,9 @@ from .views import RETURN_TO_SESSION_KEY
 
 ALLOWED_URL_NAMES = {
     "admin:logout",
+    "wagtailadmin_javascript_catalog",
     "wagtailadmin_logout",
+    "wagtailadmin_sprite",
 }
 LEGACY_PASSWORD_CHANGE_URL_NAMES = {
     "admin:password_change",

@@ -90,6 +90,35 @@ class SecurityPasswordChangeViewTests(TestCase):
         self.user.refresh_from_db()
         self.assertFalse(self.user.account_security_state.must_change_password)
 
+    def test_wagtail_assets_do_not_replace_admin_return_after_password_change(self):
+        set_user_password(
+            self.user,
+            "Temporary-Password-2!",
+            must_change_password=True,
+        )
+        self.client.force_login(self.user)
+        admin_url = reverse("wagtailadmin_home")
+
+        self.client.get(admin_url)
+        asset_responses = [
+            self.client.get(reverse("wagtailadmin_javascript_catalog")),
+            self.client.get(reverse("wagtailadmin_sprite")),
+        ]
+        response = self.client.post(
+            self.url,
+            {
+                "old_password": "Temporary-Password-2!",
+                "new_password1": "Replacement-Password-3!",
+                "new_password2": "Replacement-Password-3!",
+            },
+        )
+
+        self.assertEqual(
+            [asset_response.status_code for asset_response in asset_responses],
+            [200, 200],
+        )
+        self.assertRedirects(response, admin_url)
+
     def test_external_return_url_is_not_used(self):
         self.client.force_login(self.user)
         session = self.client.session
