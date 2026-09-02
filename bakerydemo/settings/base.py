@@ -90,6 +90,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "bakerydemo.account_security.middleware.PasswordPolicyMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
@@ -163,6 +164,11 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 ACCOUNT_SECURITY_PASSWORD_MAX_AGE_DAYS = 90
+ACCOUNT_SECURITY_PROTECTED_PREFIXES = ("/admin/", "/django-admin/")
+
+# Wagtail 7.4 embeds password editing in the account page. Disable that editor
+# so every password change uses the transactional security flow above.
+WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
 
 
 # Internationalization
