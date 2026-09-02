@@ -69,3 +69,28 @@ msgstr "目前無法登入"
 
 msgid "Return to sign in"
 msgstr "返回登入頁"
+
+msgid "User created"
+msgstr "使用者已建立"
+
+#, python-format
+msgid "User \"%(username)s\" was created successfully."
+msgstr "使用者「%(username)s」已成功建立。"
+
+msgid "Copy this temporary password now. It will not be shown again."
+msgstr "請立即複製這組臨時密碼，離開此頁後將不再顯示。"
+
+msgid "Temporary password"
+msgstr "臨時密碼"
+
+msgid "Copy password"
+msgstr "複製密碼"
+
+msgid "Password copied."
+msgstr "密碼已複製。"
+
+msgid "The user must change this temporary password after signing in."
+msgstr "此使用者登入後必須先變更臨時密碼。"
+
+msgid "Back to users"
+msgstr "返回使用者列表"

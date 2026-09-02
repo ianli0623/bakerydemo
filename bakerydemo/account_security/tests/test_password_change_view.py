@@ -150,3 +150,23 @@ class SecurityPasswordChangeViewTests(TestCase):
         self.assertEqual(len(password_inputs), 3)
         for password_input in password_inputs:
             self.assertNotRegex(password_input, r"\bvalue\s*=")
+
+    def test_password_change_page_lists_all_active_password_rules(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            self.url,
+            HTTP_ACCEPT_LANGUAGE="zh-Hant",
+        )
+
+        expected_rules = [
+            "你的密碼不能與其他個人資訊太相近。",
+            "你的密碼必須包含至少 12 個字元。",
+            "請使用至少 12 個字元，並包含英文大寫、英文小寫、數字及特殊符號。",
+            "新密碼不能與最近使用的 3 組密碼相同。",
+            "你不能使用常見的密碼。",
+            "你的密碼不能全都是數字。",
+        ]
+        for rule in expected_rules:
+            with self.subTest(rule=rule):
+                self.assertContains(response, rule)

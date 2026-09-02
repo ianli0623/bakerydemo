@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "bakerydemo.search",
     "wagtail.embeds",
     "wagtail.sites",
-    "wagtail.users",
+    "bakerydemo.account_security.wagtail_users.SecureWagtailUsersAppConfig",
     "wagtail.snippets",
     "wagtail.documents",
     "wagtail.images",
