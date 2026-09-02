@@ -146,6 +146,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
+    {
+        "NAME": "bakerydemo.account_security.validators.PasswordComplexityValidator",
+    },
+    {
+        "NAME": "bakerydemo.account_security.validators.PasswordHistoryValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
