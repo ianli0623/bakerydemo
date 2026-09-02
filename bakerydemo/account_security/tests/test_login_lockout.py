@@ -1,7 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-from axes.models import AccessAttempt
+from axes.models import AccessAttempt, AccessFailureLog
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import DatabaseError
@@ -85,6 +85,15 @@ class AdminLoginLockoutTests(TestCase):
             response = self._post_wagtail_login("Wrong-Password-1!")
 
         self.assertNotEqual(response.status_code, 429)
+
+    def test_each_failed_login_is_written_to_the_detailed_log(self):
+        for _ in range(3):
+            self._post_wagtail_login("Wrong-Password-1!")
+
+        self.assertEqual(
+            AccessFailureLog.objects.filter(username="admin").count(),
+            3,
+        )
 
     def test_django_admin_uses_the_same_username_lock(self):
         for _ in range(5):
