@@ -13,9 +13,7 @@ def detect_password_hash_change(sender, instance, **kwargs):
         instance._account_security_password_changed = instance.has_usable_password()
         return
 
-    previous = (
-        sender._default_manager.only("password").filter(pk=instance.pk).first()
-    )
+    previous = sender._default_manager.only("password").filter(pk=instance.pk).first()
     instance._account_security_password_changed = (
         previous is not None and previous.password != instance.password
     )

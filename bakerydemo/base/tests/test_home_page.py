@@ -3,6 +3,7 @@ from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase
 from wagtail.test.utils.form_data import nested_form_data, streamfield
 
+from bakerydemo.account_security.services import sync_password_change
 from bakerydemo.base.models import HomePage, StandardPage
 
 
@@ -36,9 +37,12 @@ class HomePageRenderTest(WagtailPageTestCase):
         super().setUp()
 
         self.user = User.objects.create_superuser(
-            username="testadmin", email="test@example.com", password="password"
+            username="testadmin",
+            email="test@example.com",
+            password="Test-Admin-Password-1!",
         )
-        self.client.login(username="testadmin", password="password")
+        sync_password_change(self.user, must_change_password=False)
+        self.client.force_login(self.user)
 
     def test_homepage_renders(self):
         response = self.client.get(self.home.url)

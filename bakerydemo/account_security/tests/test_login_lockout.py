@@ -28,6 +28,7 @@ class AdminLoginLockoutTests(TestCase):
             reverse("wagtailadmin_login"),
             {"username": username, "password": password},
             REMOTE_ADDR=remote_addr,
+            HTTP_ACCEPT_LANGUAGE="en",
         )
 
     def test_fifth_failure_locks_the_username_across_ip_addresses(self):

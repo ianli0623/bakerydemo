@@ -78,6 +78,4 @@ class PasswordHistoryValidator:
             )
 
     def get_help_text(self):
-        return _(
-            "The new password cannot match any of your 3 most recent passwords."
-        )
+        return _("The new password cannot match any of your 3 most recent passwords.")

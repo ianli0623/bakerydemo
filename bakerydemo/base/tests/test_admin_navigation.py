@@ -5,6 +5,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from bakerydemo.account_security.services import sync_password_change
+
 
 class AdminNavigationTests(TestCase):
     @classmethod
@@ -12,8 +14,9 @@ class AdminNavigationTests(TestCase):
         cls.user = get_user_model().objects.create_superuser(
             username="admin-navigation",
             email="admin-navigation@example.com",
-            password="password",
+            password="Admin-Navigation-Password-1!",
         )
+        sync_password_change(cls.user, must_change_password=False)
 
     def setUp(self):
         self.client.force_login(self.user)

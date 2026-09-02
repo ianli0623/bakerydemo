@@ -46,8 +46,13 @@ class PasswordHistoryValidatorTests(TestCase):
                 user=user, encoded_password=make_password(password)
             )
 
-        with self.assertRaisesMessage(ValidationError, "recently used"):
+        with self.assertRaises(ValidationError) as error:
             PasswordHistoryValidator().validate("History-Two-2!", user)
+
+        self.assertIn(
+            "password_used_recently",
+            {item.code for item in error.exception.error_list},
+        )
 
     def test_ignores_a_fourth_older_password(self):
         user = get_user_model().objects.create_user(username="editor")

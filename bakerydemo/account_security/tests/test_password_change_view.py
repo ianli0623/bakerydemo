@@ -57,7 +57,11 @@ class SecurityPasswordChangeViewTests(TestCase):
             },
         )
 
-        self.assertContains(response, "recently used")
+        form_errors = response.context["form"].errors.as_data()
+        self.assertEqual(
+            form_errors["new_password1"][0].code,
+            "password_used_recently",
+        )
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("Temporary-Password-2!"))
 
