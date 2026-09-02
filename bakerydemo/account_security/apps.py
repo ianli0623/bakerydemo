@@ -13,4 +13,4 @@ class AccountSecurityConfig(AppConfig):
 
         admin.site.login_form = SecurityAdminAuthenticationForm
 
-        from . import signals  # noqa: F401
+        from . import checks, signals  # noqa: F401

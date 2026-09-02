@@ -7,6 +7,10 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 
+ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 # DJANGO_SECRET_KEY *should* be specified in the environment. If it's not, generate an ephemeral key.
 if "DJANGO_SECRET_KEY" in os.environ:
     SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
@@ -254,7 +258,7 @@ if os.environ.get("BASIC_AUTH_ENABLED", "false").lower().strip() == "true":
 
 # Force HTTPS redirect (enabled by default!)
 # https://docs.djangoproject.com/en/stable/ref/settings/#secure-ssl-redirect
-SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() == "true"
+SECURE_SSL_REDIRECT = True
 
 # This will allow the cache to swallow the fact that the website is behind TLS
 # and inform the Django using "X-Forwarded-Proto" HTTP header.

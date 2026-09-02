@@ -172,6 +172,7 @@ AUTHENTICATION_BACKENDS = [
 
 ACCOUNT_SECURITY_PASSWORD_MAX_AGE_DAYS = 90
 ACCOUNT_SECURITY_PROTECTED_PREFIXES = ("/admin/", "/django-admin/")
+ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS = False
 
 # Wagtail 7.4 embeds password editing in the account page. Disable that editor
 # so every password change uses the transactional security flow above.
