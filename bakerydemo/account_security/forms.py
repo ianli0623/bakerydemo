@@ -1,9 +1,31 @@
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from wagtail.admin.forms.auth import LoginForm as WagtailLoginForm
 
 from .services import set_user_password
+
+GENERIC_LOGIN_ERROR = _(
+    "The username or password is incorrect, or this account is temporarily unavailable."
+)
+
+
+class SecurityAdminAuthenticationForm(AuthenticationForm):
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": GENERIC_LOGIN_ERROR,
+        "inactive": GENERIC_LOGIN_ERROR,
+    }
+
+
+class SecurityWagtailLoginForm(WagtailLoginForm):
+    error_messages = {
+        **WagtailLoginForm.error_messages,
+        "invalid_login": GENERIC_LOGIN_ERROR,
+        "inactive": GENERIC_LOGIN_ERROR,
+    }
 
 
 class SecurityPasswordChangeForm(forms.Form):

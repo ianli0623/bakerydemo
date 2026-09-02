@@ -7,4 +7,10 @@ class AccountSecurityConfig(AppConfig):
     verbose_name = "Account security"
 
     def ready(self):
+        from django.contrib import admin
+
+        from .forms import SecurityAdminAuthenticationForm
+
+        admin.site.login_form = SecurityAdminAuthenticationForm
+
         from . import signals  # noqa: F401
