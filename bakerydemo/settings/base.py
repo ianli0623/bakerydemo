@@ -37,6 +37,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "bakerydemo.account_security.apps.AccountSecurityConfig",
     "bakerydemo.base",
     "bakerydemo.blog",
     "bakerydemo.breads",
