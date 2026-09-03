@@ -83,6 +83,11 @@ def hide_unused_settings_menu_items(request, menu_items):
     ]
 
 
+@hooks.register("construct_page_action_menu")
+def hide_submit_to_moderation(menu_items, request, context):
+    menu_items[:] = [item for item in menu_items if item.name != "action-submit"]
+
+
 class CustomAccessibilityItem(ContentCheckerItem):
     axe_run_only = None
 

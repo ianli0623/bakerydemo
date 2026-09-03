@@ -142,6 +142,32 @@ class AdminNavigationTests(TestCase):
             "live page status link is still rendered",
         )
 
+    def test_page_editor_hides_submit_to_moderators_approval(self):
+        response = self.client.get(
+            reverse("wagtailadmin_pages:edit", args=[self.page.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'name="action-submit"')
+        self.assertContains(response, 'name="action-publish"')
+
+    def test_page_listing_hides_view_live_action(self):
+        response = self.client.get(
+            reverse("wagtailadmin_explore", args=[self.page.get_parent().id])
+        )
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("檢視線上版本", html)
+        self.assertContains(
+            response,
+            reverse("wagtailadmin_pages:edit", args=[self.page.id]),
+        )
+        self.assertContains(
+            response,
+            reverse("wagtailadmin_pages:history", args=[self.page.id]),
+        )
+
     def test_admin_home_does_not_render_bakery_branding(self):
         response = self.client.get(reverse("wagtailadmin_home"))
 

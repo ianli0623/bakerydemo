@@ -1,0 +1,10 @@
+{% extends "wagtailadmin/shared/button_with_dropdown.html" %}
+{% load wagtailadmin_tags %}
+
+{% block content %}
+    {% for button in buttons %}
+        {% if button.icon_name != "doc-empty" %}
+            {% component button %}
+        {% endif %}
+    {% endfor %}
+{% endblock %}
