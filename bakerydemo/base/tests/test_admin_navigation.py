@@ -88,6 +88,34 @@ class AdminNavigationTests(TestCase):
             with self.subTest(menu_name=menu_name):
                 self.assertNotIn(menu_name, menu_names)
 
+    def test_help_and_search_are_hidden_from_main_menu(self):
+        sidebar = self._get_sidebar()
+        menu_names = []
+
+        def collect_names(value):
+            if isinstance(value, dict):
+                if "name" in value:
+                    menu_names.append(value["name"])
+                for child in value.values():
+                    collect_names(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect_names(child)
+
+        collect_names(sidebar)
+
+        with self.subTest(item="help"):
+            self.assertNotIn("help", menu_names)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+        with self.subTest(item="search"):
+            self.assertRegex(
+                response.content.decode(),
+                r"<style data-hide-admin-search>\s*"
+                r'#wagtail-sidebar form\[role="search"\]\s*'
+                r"\{\s*display:\s*none;\s*\}\s*</style>",
+            )
+
     def test_admin_home_does_not_render_bakery_branding(self):
         response = self.client.get(reverse("wagtailadmin_home"))
 

@@ -1,3 +1,4 @@
+from django.utils.safestring import mark_safe
 from wagtail import hooks
 from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
@@ -7,6 +8,7 @@ from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 from bakerydemo.base.filters import RevisionFilterSetMixin
 from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 
+HIDDEN_MAIN_MENU_ITEMS = {"help"}
 HIDDEN_REPORT_MENU_ITEMS = {
     "locked-pages",
     "page-types-usage",
@@ -46,6 +48,24 @@ def register_icons(icons):
     return icons + [
         "wagtailfontawesomesvg/solid/suitcase.svg",
         "wagtailfontawesomesvg/solid/utensils.svg",
+    ]
+
+
+@hooks.register("insert_global_admin_css")
+def hide_admin_search():
+    return mark_safe(
+        """
+        <style data-hide-admin-search>
+            #wagtail-sidebar form[role="search"] { display: none; }
+        </style>
+        """
+    )
+
+
+@hooks.register("construct_main_menu")
+def hide_unused_main_menu_items(request, menu_items):
+    menu_items[:] = [
+        item for item in menu_items if item.name not in HIDDEN_MAIN_MENU_ITEMS
     ]
 
 
