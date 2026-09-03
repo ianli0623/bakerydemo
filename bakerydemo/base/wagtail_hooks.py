@@ -7,6 +7,23 @@ from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 from bakerydemo.base.filters import RevisionFilterSetMixin
 from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 
+HIDDEN_REPORT_MENU_ITEMS = {
+    "locked-pages",
+    "page-types-usage",
+    "search-terms",
+    "workflow-tasks",
+    "workflows",
+}
+HIDDEN_SETTINGS_MENU_ITEMS = {
+    "generic-settings",
+    "locales",
+    "redirects",
+    "sites",
+    "styleguide",
+    "workflow-tasks",
+    "workflows",
+}
+
 """
 N.B. To see what icons are available for use in Wagtail menus and StreamField block types,
 enable the styleguide in settings:
@@ -29,6 +46,20 @@ def register_icons(icons):
     return icons + [
         "wagtailfontawesomesvg/solid/suitcase.svg",
         "wagtailfontawesomesvg/solid/utensils.svg",
+    ]
+
+
+@hooks.register("construct_reports_menu")
+def hide_unused_report_menu_items(request, menu_items):
+    menu_items[:] = [
+        item for item in menu_items if item.name not in HIDDEN_REPORT_MENU_ITEMS
+    ]
+
+
+@hooks.register("construct_settings_menu")
+def hide_unused_settings_menu_items(request, menu_items):
+    menu_items[:] = [
+        item for item in menu_items if item.name not in HIDDEN_SETTINGS_MENU_ITEMS
     ]
 
 

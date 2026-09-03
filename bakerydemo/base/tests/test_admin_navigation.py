@@ -21,7 +21,7 @@ class AdminNavigationTests(TestCase):
     def setUp(self):
         self.client.force_login(self.user)
 
-    def test_only_semi_site_settings_are_exposed_from_demo_menu_groups(self):
+    def _get_sidebar(self):
         response = self.client.get(reverse("wagtailadmin_home"))
 
         self.assertEqual(response.status_code, 200)
@@ -31,7 +31,10 @@ class AdminNavigationTests(TestCase):
             re.DOTALL,
         )
         self.assertIsNotNone(match)
-        sidebar = json.loads(match.group(1))
+        return json.loads(match.group(1))
+
+    def test_only_semi_site_settings_are_exposed_from_demo_menu_groups(self):
+        sidebar = self._get_sidebar()
 
         labels = []
 
@@ -52,6 +55,38 @@ class AdminNavigationTests(TestCase):
         self.assertNotIn("Breads", labels)
         self.assertNotIn("People", labels)
         self.assertNotIn("Footer text", labels)
+
+    def test_unused_reports_and_settings_are_hidden(self):
+        sidebar = self._get_sidebar()
+        menu_names = []
+
+        def collect_names(value):
+            if isinstance(value, dict):
+                if "name" in value:
+                    menu_names.append(value["name"])
+                for child in value.values():
+                    collect_names(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect_names(child)
+
+        collect_names(sidebar)
+
+        hidden_menu_names = {
+            "generic-settings",
+            "locales",
+            "locked-pages",
+            "page-types-usage",
+            "redirects",
+            "search-terms",
+            "sites",
+            "styleguide",
+            "workflow-tasks",
+            "workflows",
+        }
+        for menu_name in hidden_menu_names:
+            with self.subTest(menu_name=menu_name):
+                self.assertNotIn(menu_name, menu_names)
 
     def test_admin_home_does_not_render_bakery_branding(self):
         response = self.client.get(reverse("wagtailadmin_home"))
