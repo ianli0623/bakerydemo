@@ -153,6 +153,21 @@ class AdminNavigationTests(TestCase):
         self.assertContains(response, "data-admin-branding-removed")
         self.assertNotContains(response, "wagtailadmin/images/favicon.ico")
 
+    def test_admin_home_hides_editor_guide_but_keeps_account_link(self):
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "editor guide")
+        self.assertContains(response, reverse("wagtailadmin_account"))
+
+    def test_page_listing_hides_live_status_but_keeps_status_panel(self):
+        response = self.client.get(reverse("wagtailadmin_explore", args=[self.page.id]))
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(html.count("page-status-tag"), 0)
+        self.assertIn('data-side-panel-toggle="status"', html)
+
     def test_login_does_not_render_wagtail_branding(self):
         self.client.logout()
 

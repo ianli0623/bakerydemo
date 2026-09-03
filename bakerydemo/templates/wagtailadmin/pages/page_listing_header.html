@@ -1,0 +1,10 @@
+{% extends "wagtailadmin/shared/headers/slim_header.html" %}
+{% load wagtailadmin_tags %}
+
+{% block breadcrumbs %}
+    {% page_breadcrumbs parent_page "wagtailadmin_explore" url_root_name="wagtailadmin_explore_root" icon_name=header_icon %}
+{% endblock %}
+
+{% block side_panels %}
+    {% include "wagtailadmin/shared/side_panels.html" with in_explorer=True %}
+{% endblock side_panels %}
