@@ -57,6 +57,42 @@ class PasswordPolicyMiddlewareTests(TestCase):
             fetch_redirect_response=False,
         )
 
+    def test_password_with_30_days_remaining_shows_warning_once_per_session(self):
+        state = self.user.account_security_state
+        state.must_change_password = False
+        state.password_changed_at = timezone.now() - timedelta(days=60)
+        state.save()
+
+        first_response = self.client.get(reverse("wagtailadmin_home"))
+        second_response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertContains(first_response, "密碼將於")
+        self.assertContains(first_response, "剩餘 30 天")
+        self.assertContains(first_response, "立即變更密碼")
+        self.assertContains(first_response, '<li class="warning">', html=False)
+        self.assertNotContains(second_response, "密碼將於")
+
+    def test_password_with_7_days_remaining_shows_critical_warning(self):
+        state = self.user.account_security_state
+        state.must_change_password = False
+        state.password_changed_at = timezone.now() - timedelta(days=83)
+        state.save()
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertContains(response, "剩餘 7 天")
+        self.assertContains(response, '<li class="error">', html=False)
+
+    def test_password_with_more_than_30_days_remaining_shows_no_warning(self):
+        state = self.user.account_security_state
+        state.must_change_password = False
+        state.password_changed_at = timezone.now() - timedelta(days=59)
+        state.save()
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertNotContains(response, "密碼將於")
+
     def test_logout_remains_available(self):
         response = self.client.post(reverse("wagtailadmin_logout"))
 

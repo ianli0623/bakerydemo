@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from bakerydemo.account_security.models import PasswordHistory, UserSecurityState
 from bakerydemo.account_security.services import (
+    get_password_expiry_status,
     password_is_expired,
     set_user_password,
 )
@@ -52,6 +53,31 @@ class PasswordServiceTests(TestCase):
         state.save()
 
         self.assertTrue(password_is_expired(self.user, at=now))
+
+    def test_password_expiry_warning_starts_with_30_days_remaining(self):
+        now = timezone.now()
+        state = self.user.account_security_state
+        state.password_changed_at = now - timedelta(days=60)
+        state.must_change_password = False
+        state.save()
+
+        status = get_password_expiry_status(self.user, at=now)
+
+        self.assertEqual(status.expires_at, now + timedelta(days=30))
+        self.assertEqual(status.remaining_days, 30)
+        self.assertEqual(status.warning_level, "warning")
+
+    def test_password_expiry_warning_becomes_critical_with_7_days_remaining(self):
+        now = timezone.now()
+        state = self.user.account_security_state
+        state.password_changed_at = now - timedelta(days=83)
+        state.must_change_password = False
+        state.save()
+
+        status = get_password_expiry_status(self.user, at=now)
+
+        self.assertEqual(status.remaining_days, 7)
+        self.assertEqual(status.warning_level, "critical")
 
     def test_history_failure_rolls_back_password(self):
         original_hash = self.user.password

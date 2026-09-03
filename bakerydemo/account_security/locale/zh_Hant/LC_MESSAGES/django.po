@@ -94,3 +94,32 @@ msgstr "此使用者登入後必須先變更臨時密碼。"
 
 msgid "Back to users"
 msgstr "返回使用者列表"
+
+#, python-format
+msgid "Your password will expire on %(date)s. %(days)d days remaining."
+msgstr "密碼將於 %(date)s 到期，剩餘 %(days)d 天。"
+
+msgid "Change password now"
+msgstr "立即變更密碼"
+
+msgid "Password expiry reminders"
+msgstr "密碼到期提醒"
+
+msgid "Active admin users whose passwords expire within 30 days."
+msgstr "密碼將於 30 天內到期的有效後台使用者。"
+
+msgid "Last password change"
+msgstr "最後變更密碼時間"
+
+msgid "Expiry date"
+msgstr "到期日"
+
+msgid "Status"
+msgstr "狀態"
+
+#, python-format
+msgid "%(days)s days"
+msgstr "%(days)s 天"
+
+msgid "No active admin users have passwords expiring within 30 days."
+msgstr "目前沒有密碼將於 30 天內到期的有效後台使用者。"
