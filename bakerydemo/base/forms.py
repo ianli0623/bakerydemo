@@ -1,4 +1,4 @@
-from wagtail.admin.forms.account import AvatarPreferencesForm
+from wagtail.admin.forms.account import AvatarPreferencesForm, ThemePreferencesForm
 
 
 class ResettableAvatarPreferencesForm(AvatarPreferencesForm):
@@ -7,3 +7,9 @@ class ResettableAvatarPreferencesForm(AvatarPreferencesForm):
             return False
 
         return super().clean_avatar()
+
+
+class SimplifiedThemePreferencesForm(ThemePreferencesForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop("keyboard_shortcuts", None)

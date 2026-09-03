@@ -2,16 +2,21 @@ from django.utils.safestring import mark_safe
 from wagtail import hooks
 from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
-from wagtail.admin.views.account import AvatarSettingsPanel
+from wagtail.admin.views.account import AvatarSettingsPanel, ThemeSettingsPanel
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
 from bakerydemo.base.filters import RevisionFilterSetMixin
-from bakerydemo.base.forms import ResettableAvatarPreferencesForm
+from bakerydemo.base.forms import (
+    ResettableAvatarPreferencesForm,
+    SimplifiedThemePreferencesForm,
+)
 from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 
 # Ensure the account panel treats the clear checkbox as an explicit reset.
 AvatarSettingsPanel.form_class = ResettableAvatarPreferencesForm
+# Keep the remaining theme controls while hiding Wagtail-specific shortcuts.
+ThemeSettingsPanel.form_class = SimplifiedThemePreferencesForm
 
 HIDDEN_MAIN_MENU_ITEMS = {"help"}
 HIDDEN_REPORT_MENU_ITEMS = {

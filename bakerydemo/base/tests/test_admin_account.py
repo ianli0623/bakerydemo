@@ -12,7 +12,7 @@ from bakerydemo.account_security.services import sync_password_change
 from bakerydemo.base.forms import ResettableAvatarPreferencesForm
 
 
-class AdminAvatarResetTests(TestCase):
+class AdminAccountSettingsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -103,3 +103,29 @@ class AdminAvatarResetTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data["avatar"].name, "replacement.png")
+
+    def test_keyboard_shortcuts_setting_is_hidden(self):
+        response = self.client.get(reverse("wagtailadmin_account"))
+
+        self.assertEqual(response.status_code, 200)
+        for field_name in ("theme", "contrast", "density"):
+            with self.subTest(field_name=field_name):
+                self.assertContains(response, f'name="theme-{field_name}"')
+        self.assertNotContains(response, 'name="theme-keyboard_shortcuts"')
+        self.assertNotContains(
+            response,
+            "Enable custom keyboard shortcuts specific to Wagtail.",
+        )
+
+    def test_saving_account_preserves_hidden_keyboard_shortcuts_setting(self):
+        self.profile.keyboard_shortcuts = True
+        self.profile.save(update_fields=["keyboard_shortcuts"])
+
+        response = self.client.post(
+            reverse("wagtailadmin_account"),
+            self._account_form_data(),
+        )
+
+        self.assertRedirects(response, reverse("wagtailadmin_account"))
+        self.profile.refresh_from_db()
+        self.assertTrue(self.profile.keyboard_shortcuts)
