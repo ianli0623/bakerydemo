@@ -4,8 +4,10 @@ import re
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from wagtail.models import Site
 
 from bakerydemo.account_security.services import sync_password_change
+from bakerydemo.base.models import StandardPage
 
 
 class AdminNavigationTests(TestCase):
@@ -17,6 +19,9 @@ class AdminNavigationTests(TestCase):
             password="Admin-Navigation-Password-1!",
         )
         sync_password_change(cls.user, must_change_password=False)
+        cls.page = StandardPage(title="Editor controls test", slug="editor-controls")
+        Site.objects.get(is_default_site=True).root_page.add_child(instance=cls.page)
+        cls.page.save_revision().publish()
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -115,6 +120,27 @@ class AdminNavigationTests(TestCase):
                 r'#wagtail-sidebar form\[role="search"\]\s*'
                 r"\{\s*display:\s*none;\s*\}\s*</style>",
             )
+
+    def test_unused_page_editor_controls_are_hidden(self):
+        response = self.client.get(
+            reverse("wagtailadmin_pages:edit", args=[self.page.id])
+        )
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-side-panel-toggle="status"', html)
+        for panel_name in ("preview", "checks", "comments"):
+            with self.subTest(panel_name=panel_name):
+                self.assertEqual(
+                    html.count(f'data-side-panel-toggle="{panel_name}"'),
+                    0,
+                    f"{panel_name} side panel toggle is still rendered",
+                )
+        self.assertEqual(
+            html.count("page-status-tag"),
+            0,
+            "live page status link is still rendered",
+        )
 
     def test_admin_home_does_not_render_bakery_branding(self):
         response = self.client.get(reverse("wagtailadmin_home"))
