@@ -52,3 +52,23 @@ class AdminNavigationTests(TestCase):
         self.assertNotIn("Breads", labels)
         self.assertNotIn("People", labels)
         self.assertNotIn("Footer text", labels)
+
+    def test_admin_home_does_not_render_bakery_branding(self):
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotRegex(
+            response.content.decode(),
+            r"<h1\b[^>]*>\s*The Wagtail Bakery\s*</h1>",
+        )
+        self.assertContains(response, "data-admin-branding-removed")
+        self.assertNotContains(response, "wagtailadmin/images/favicon.ico")
+
+    def test_login_does_not_render_wagtail_branding(self):
+        self.client.logout()
+
+        response = self.client.get(reverse("wagtailadmin_login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'class="login-logo"')
+        self.assertNotContains(response, "wagtailadmin/images/favicon.ico")
