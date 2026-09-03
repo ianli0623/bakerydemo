@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from wagtail.models import Site
+from wagtail.users.models import UserProfile
 
 from bakerydemo.account_security.services import sync_password_change
 from bakerydemo.base.models import StandardPage
@@ -92,6 +93,47 @@ class AdminNavigationTests(TestCase):
         for menu_name in hidden_menu_names:
             with self.subTest(menu_name=menu_name):
                 self.assertNotIn(menu_name, menu_names)
+
+    def test_aging_pages_label_is_localized_for_admin_language(self):
+        sidebar = self._get_sidebar()
+        labels = []
+
+        def collect_labels(value):
+            if isinstance(value, dict):
+                if "label" in value:
+                    labels.append(value["label"])
+                for child in value.values():
+                    collect_labels(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect_labels(child)
+
+        collect_labels(sidebar)
+
+        self.assertIn("久未更新頁面", labels)
+        self.assertNotIn("Aging pages", labels)
+
+        response = self.client.get(reverse("wagtailadmin_reports:aging_pages"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "久未更新頁面")
+        self.assertNotContains(response, "Aging pages")
+
+        profile = UserProfile.objects.create(user=self.user)
+        profile.preferred_language = "en"
+        profile.save(update_fields=["preferred_language"])
+
+        labels.clear()
+        collect_labels(self._get_sidebar())
+
+        self.assertIn("Aging pages", labels)
+        self.assertNotIn("久未更新頁面", labels)
+
+        response = self.client.get(reverse("wagtailadmin_reports:aging_pages"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Aging pages")
+        self.assertNotContains(response, "久未更新頁面")
 
     def test_help_and_search_are_hidden_from_main_menu(self):
         sidebar = self._get_sidebar()
