@@ -210,10 +210,14 @@ class AdminNavigationTests(TestCase):
             reverse("wagtailadmin_pages:history", args=[self.page.id]),
         )
 
-    def test_admin_home_does_not_render_bakery_branding(self):
+    def test_admin_home_renders_semi_e187_branding(self):
         response = self.client.get(reverse("wagtailadmin_home"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.content.decode(),
+            r"<h1\b[^>]*>\s*SEMI E187\s*</h1>",
+        )
         self.assertNotRegex(
             response.content.decode(),
             r"<h1\b[^>]*>\s*The Wagtail Bakery\s*</h1>",
