@@ -2,95 +2,96 @@ import type {
   BakeryContentLink,
   BakeryImage,
   BakeryRendition,
-  BakeryStreamBlock
-} from '../../shared/types/bakery.ts'
+  BakeryStreamBlock,
+} from '../../shared/types/bakery.ts';
 
 export function getHeadingTag(size: string): 'h2' | 'h3' | 'h4' {
-  return size === 'h3' || size === 'h4' ? size : 'h2'
+  return size === 'h3' || size === 'h4' ? size : 'h2';
 }
 
 export function getCardHeadingTag(sectionHeading: string): 'h2' | 'h3' {
-  return sectionHeading.trim() ? 'h3' : 'h2'
+  return sectionHeading.trim() ? 'h3' : 'h2';
 }
 
 export function getImageRendition(
-  block: BakeryStreamBlock
+  block: BakeryStreamBlock,
 ): BakeryRendition | null {
   return block.type === 'image_block'
-    ? block.value.image.meta.rendition ?? null
-    : null
+    ? (block.value.image.meta.rendition ?? null)
+    : null;
 }
 
 export function getRenditionSource(rendition: BakeryRendition): string {
-  return rendition.full_url || rendition.url
+  return rendition.full_url || rendition.url;
 }
 
 export interface ImagePresentation {
-  src: string
-  width: number
-  height: number
-  alt: string
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
 }
 
 export function getImagePresentation(
   image: BakeryImage,
-  fallbackAlt: string
+  fallbackAlt: string,
 ): ImagePresentation | null {
-  const rendition = image.meta.rendition
+  const rendition = image.meta.rendition;
   if (!rendition) {
-    return null
+    return null;
   }
 
   return {
     src: getRenditionSource(rendition),
     width: rendition.width,
     height: rendition.height,
-    alt: rendition.alt.trim() || fallbackAlt.trim() || image.title
-  }
+    alt: rendition.alt.trim() || fallbackAlt.trim() || image.title,
+  };
 }
 
 export type LinkPresentation =
   | { kind: 'internal'; to: string; label: string }
   | { kind: 'external'; href: string; label: string; newTab: boolean }
-  | { kind: 'disabled'; label: string }
+  | { kind: 'disabled'; label: string };
 
 function disabledLink(label: string): LinkPresentation {
-  return { kind: 'disabled', label }
+  return { kind: 'disabled', label };
 }
 
 function isSafeInternalHref(href: string): boolean {
   if (!href.startsWith('/') || href.startsWith('//') || href.includes('\\')) {
-    return false
+    return false;
   }
 
   try {
-    return new URL(href, 'http://bakery.local').origin === 'http://bakery.local'
+    return (
+      new URL(href, 'http://bakery.local').origin === 'http://bakery.local'
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
 function isSafeExternalHref(href: string): boolean {
   try {
     return ['http:', 'https:', 'mailto:', 'tel:'].includes(
-      new URL(href).protocol
-    )
+      new URL(href).protocol,
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
 export function getLinkPresentation(
   link: BakeryContentLink,
-  localizePath: (path: string) => string = path => path
+  localizePath: (path: string) => string = (path) => path,
 ): LinkPresentation {
-  const href = link.href?.trim() ?? ''
-  const resolvePath = typeof localizePath === 'function'
-    ? localizePath
-    : (path: string) => path
+  const href = link.href?.trim() ?? '';
+  const resolvePath =
+    typeof localizePath === 'function' ? localizePath : (path: string) => path;
 
   if (link.kind === 'internal' && isSafeInternalHref(href)) {
-    return { kind: 'internal', to: resolvePath(href), label: link.label }
+    return { kind: 'internal', to: resolvePath(href), label: link.label };
   }
 
   if (link.kind === 'external' && isSafeExternalHref(href)) {
@@ -98,79 +99,79 @@ export function getLinkPresentation(
       kind: 'external',
       href,
       label: link.label,
-      newTab: link.new_tab
-    }
+      newTab: link.new_tab,
+    };
   }
 
-  return disabledLink(link.label)
+  return disabledLink(link.label);
 }
 
 interface StructuredBlockIdentity {
-  id: string
-  type: string
-  value?: unknown
+  id: string;
+  type: string;
+  value?: unknown;
 }
 
 const structuredBlockAnchors: Record<string, string> = {
   process_steps: 'vendor-process',
-  case_study: 'case-studies'
-}
+  case_study: 'case-studies',
+};
 
 export function getStructuredBlockAnchor(
   block: StructuredBlockIdentity,
   blocks: StructuredBlockIdentity[],
   reservedAnchors: string[] = [],
-  pageSlug = ''
+  pageSlug = '',
 ): string | undefined {
   if (block.type === 'card_grid' && pageSlug === 'certification') {
     if (reservedAnchors.includes('certified-list')) {
-      return undefined
+      return undefined;
     }
 
-    const firstCertifiedList = blocks.find(candidate => candidate.type === 'card_grid')
-    return firstCertifiedList?.id === block.id ? 'certified-list' : undefined
+    const firstCertifiedList = blocks.find(
+      (candidate) => candidate.type === 'card_grid',
+    );
+    return firstCertifiedList?.id === block.id ? 'certified-list' : undefined;
   }
 
-  const anchor = structuredBlockAnchors[block.type]
+  const anchor = structuredBlockAnchors[block.type];
   if (!anchor || reservedAnchors.includes(anchor)) {
-    return undefined
+    return undefined;
   }
 
-  return blocks.find(candidate => candidate.type === block.type)?.id ===
+  return blocks.find((candidate) => candidate.type === block.type)?.id ===
     block.id
     ? anchor
-    : undefined
+    : undefined;
 }
 
 export function getDocumentRowAnchor(number: string): string | undefined {
-  const normalized = number.trim()
-  return /^\d+$/.test(normalized) ? `doc-${normalized}` : undefined
+  const normalized = number.trim();
+  return /^\d+$/.test(normalized) ? `doc-${normalized}` : undefined;
 }
 
 export type EmbedPresentation =
   | { kind: 'iframe'; url: string }
-  | { kind: 'link'; url: string }
+  | { kind: 'link'; url: string };
 
-export function getEmbedPresentation(
-  value: string
-): EmbedPresentation | null {
-  let url: URL
+export function getEmbedPresentation(value: string): EmbedPresentation | null {
+  let url: URL;
 
   try {
-    url = new URL(value)
+    url = new URL(value);
   } catch {
-    return null
+    return null;
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return null
+    return null;
   }
 
-  const hostname = url.hostname.toLowerCase()
-  let videoId: string | null = null
+  const hostname = url.hostname.toLowerCase();
+  let videoId: string | null = null;
 
   if (hostname === 'youtu.be') {
-    videoId = url.pathname.split('/').filter(Boolean)[0] ?? null
+    videoId = url.pathname.split('/').filter(Boolean)[0] ?? null;
   } else if (
     hostname === 'youtube.com' ||
     hostname === 'www.youtube.com' ||
@@ -179,15 +180,15 @@ export function getEmbedPresentation(
     hostname === 'www.youtube-nocookie.com'
   ) {
     videoId = url.pathname.startsWith('/embed/')
-      ? url.pathname.split('/')[2] ?? null
-      : url.searchParams.get('v')
+      ? (url.pathname.split('/')[2] ?? null)
+      : url.searchParams.get('v');
   }
 
   if (videoId && /^[a-zA-Z0-9_-]{6,}$/.test(videoId)) {
     return {
       kind: 'iframe',
-      url: `https://www.youtube-nocookie.com/embed/${videoId}`
-    }
+      url: `https://www.youtube-nocookie.com/embed/${videoId}`,
+    };
   }
 
   if (
@@ -195,14 +196,14 @@ export function getEmbedPresentation(
     hostname === 'www.vimeo.com' ||
     hostname === 'player.vimeo.com'
   ) {
-    const vimeoId = url.pathname.split('/').filter(Boolean).at(-1)
+    const vimeoId = url.pathname.split('/').filter(Boolean).at(-1);
     if (vimeoId && /^\d+$/.test(vimeoId)) {
       return {
         kind: 'iframe',
-        url: `https://player.vimeo.com/video/${vimeoId}`
-      }
+        url: `https://player.vimeo.com/video/${vimeoId}`,
+      };
     }
   }
 
-  return { kind: 'link', url: url.toString() }
+  return { kind: 'link', url: url.toString() };
 }

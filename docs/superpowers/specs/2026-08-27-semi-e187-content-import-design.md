@@ -1,7 +1,7 @@
 # SEMI E187 Structured Content Import Design
 
-**Date:** 2026-08-27  
-**Status:** Approved design  
+**Date:** 2026-08-27
+**Status:** Approved design
 **Target branch:** `codex/nuxt-bakery-api`
 
 ## Summary

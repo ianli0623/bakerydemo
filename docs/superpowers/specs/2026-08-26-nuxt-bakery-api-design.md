@@ -149,4 +149,3 @@ Development follows test-driven development:
   documentation describes the integration as Umbraco.
 - The Wagtail backend code remains unchanged.
 - Unit tests, Nuxt type checking, and the production build all pass.
-

@@ -1,22 +1,22 @@
-import { createError } from 'h3'
+import { createError } from 'h3';
 import type {
   BakeryImage,
   BakeryNavigationItem,
   BakeryRendition,
-  BakerySiteSettings
-} from '../../shared/types/bakery.ts'
+  BakerySiteSettings,
+} from '../../shared/types/bakery.ts';
 import {
   localizedPagePath,
   normalizeBakeryLocale,
-  type BakeryLocale
-} from '../../shared/utils/locale.ts'
+  type BakeryLocale,
+} from '../../shared/utils/locale.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isString(value: unknown): value is string {
-  return typeof value === 'string'
+  return typeof value === 'string';
 }
 
 function isBakeryRendition(value: unknown): value is BakeryRendition {
@@ -27,7 +27,7 @@ function isBakeryRendition(value: unknown): value is BakeryRendition {
     typeof value.width === 'number' &&
     typeof value.height === 'number' &&
     isString(value.alt)
-  )
+  );
 }
 
 function isBakeryImage(value: unknown): value is BakeryImage {
@@ -39,7 +39,7 @@ function isBakeryImage(value: unknown): value is BakeryImage {
     isString(value.meta.download_url) &&
     (value.meta.rendition === undefined ||
       isBakeryRendition(value.meta.rendition))
-  )
+  );
 }
 
 function isLocalPath(value: unknown): value is string {
@@ -49,19 +49,21 @@ function isLocalPath(value: unknown): value is string {
     value.startsWith('//') ||
     value.includes('\\')
   ) {
-    return false
+    return false;
   }
 
   try {
-    return new URL(value, 'http://bakery.local').origin === 'http://bakery.local'
+    return (
+      new URL(value, 'http://bakery.local').origin === 'http://bakery.local'
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
 function isNavigationItem(
   value: unknown,
-  locale: BakeryLocale
+  locale: BakeryLocale,
 ): value is BakeryNavigationItem {
   if (
     !isRecord(value) ||
@@ -71,45 +73,45 @@ function isNavigationItem(
     !isString(value.slug) ||
     !isLocalPath(value.path)
   ) {
-    return false
+    return false;
   }
 
   try {
-    return value.path === localizedPagePath(locale, value.slug)
+    return value.path === localizedPagePath(locale, value.slug);
   } catch {
-    return false
+    return false;
   }
 }
 
 function getPayloadLocale(input: Record<string, unknown>): BakeryLocale | null {
   try {
-    return normalizeBakeryLocale(input.locale)
+    return normalizeBakeryLocale(input.locale);
   } catch {
-    return null
+    return null;
   }
 }
 
 function hasLocalizedHomePath(
   input: Record<string, unknown>,
-  locale: BakeryLocale
+  locale: BakeryLocale,
 ): boolean {
   return (
     typeof input.home_page_id === 'number' &&
     Number.isInteger(input.home_page_id) &&
     input.home_page_id > 0 &&
     input.home_path === localizedPagePath(locale)
-  )
+  );
 }
 
 export function isBakerySiteSettings(
-  input: unknown
+  input: unknown,
 ): input is BakerySiteSettings {
   if (!isRecord(input) || !isRecord(input.contact)) {
-    return false
+    return false;
   }
-  const locale = getPayloadLocale(input)
+  const locale = getPayloadLocale(input);
   if (!locale || !hasLocalizedHomePath(input, locale)) {
-    return false
+    return false;
   }
 
   return (
@@ -128,29 +130,29 @@ export function isBakerySiteSettings(
     (input.footer_logo === null || isBakeryImage(input.footer_logo)) &&
     Array.isArray(input.navigation) &&
     input.navigation.every((item) => isNavigationItem(item, locale))
-  )
+  );
 }
 
 export function parseBakerySiteSettings(input: unknown): BakerySiteSettings {
   if (!isBakerySiteSettings(input)) {
-    throw new Error('Bakery site settings payload is invalid.')
+    throw new Error('Bakery site settings payload is invalid.');
   }
-  return input
+  return input;
 }
 
 export function toBakerySiteSettings(input: unknown): BakerySiteSettings {
   try {
-    return parseBakerySiteSettings(input)
+    return parseBakerySiteSettings(input);
   } catch {
     throw createError({
       statusCode: 502,
-      message: 'Bakery 網站設定格式錯誤。'
-    })
+      message: 'Bakery 網站設定格式錯誤。',
+    });
   }
 }
 
 export function toNavigationItems(
-  settings: BakerySiteSettings
+  settings: BakerySiteSettings,
 ): BakeryNavigationItem[] {
-  return settings.navigation.map((item) => ({ ...item }))
+  return settings.navigation.map((item) => ({ ...item }));
 }

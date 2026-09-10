@@ -1,9 +1,9 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
   getLocalizedSeoLinks,
-  getPageSeoPresentation
-} from '../shared/utils/localized-seo.ts'
+  getPageSeoPresentation,
+} from '../shared/utils/localized-seo.ts';
 
 test('localized SEO links expose a canonical URL and both language alternatives', () => {
   assert.deepEqual(
@@ -13,20 +13,20 @@ test('localized SEO links expose a canonical URL and both language alternatives'
       alternatives: [
         {
           hreflang: 'zh-Hant',
-          href: 'http://localhost:3100/zh-tw/resources/'
+          href: 'http://localhost:3100/zh-tw/resources/',
         },
         {
           hreflang: 'en',
-          href: 'http://localhost:3100/en/resources/'
+          href: 'http://localhost:3100/en/resources/',
         },
         {
           hreflang: 'x-default',
-          href: 'http://localhost:3100/en/resources/'
-        }
-      ]
-    }
-  )
-})
+          href: 'http://localhost:3100/en/resources/',
+        },
+      ],
+    },
+  );
+});
 
 test('page SEO uses localized CMS metadata and settings', () => {
   assert.deepEqual(
@@ -35,15 +35,15 @@ test('page SEO uses localized CMS metadata and settings', () => {
         title: 'Implementation Resources',
         seoTitle: 'SEMI E187 Implementation Resources',
         searchDescription: 'Official English implementation resources.',
-        introduction: 'Fallback introduction.'
+        introduction: 'Fallback introduction.',
       },
-      'SEMI E187'
+      'SEMI E187',
     ),
     {
       title: 'SEMI E187 Implementation Resources',
-      description: 'Official English implementation resources.'
-    }
-  )
+      description: 'Official English implementation resources.',
+    },
+  );
 
   assert.deepEqual(
     getPageSeoPresentation(
@@ -51,13 +51,13 @@ test('page SEO uses localized CMS metadata and settings', () => {
         title: 'Implementation Resources',
         seoTitle: '',
         searchDescription: '',
-        introduction: 'Fallback introduction.'
+        introduction: 'Fallback introduction.',
       },
-      'SEMI E187'
+      'SEMI E187',
     ),
     {
       title: 'Implementation Resources | SEMI E187',
-      description: 'Fallback introduction.'
-    }
-  )
-})
+      description: 'Fallback introduction.',
+    },
+  );
+});

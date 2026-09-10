@@ -1,15 +1,15 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
-import type { BakerySiteSettings } from '../shared/types/bakery.ts'
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import type { BakerySiteSettings } from '../shared/types/bakery.ts';
 import {
   isBakerySiteSettings,
   parseBakerySiteSettings,
   toBakerySiteSettings,
-  toNavigationItems
-} from '../server/utils/bakery-settings.ts'
+  toNavigationItems,
+} from '../server/utils/bakery-settings.ts';
 
 function makeSiteSettings(
-  overrides: Partial<BakerySiteSettings> = {}
+  overrides: Partial<BakerySiteSettings> = {},
 ): BakerySiteSettings {
   return {
     locale: 'zh-hant',
@@ -25,69 +25,69 @@ function makeSiteSettings(
       context: '認驗證制度與流程',
       phone: '02-23116228 #202',
       phone_href: 'tel:+886223116228,202',
-      email: 'MaxYCLee@itri.org.tw'
+      email: 'MaxYCLee@itri.org.tw',
     },
     footer_introduction: '若有疑問，歡迎聯絡我們。',
     organisation_text: 'SEMI E187',
     footer_logo: null,
     navigation: [],
-    ...overrides
-  }
+    ...overrides,
+  };
 }
 
 test('parseBakerySiteSettings accepts the exact public settings contract', () => {
   const settings = makeSiteSettings({
     navigation: [
       { id: 60, title: '首頁', slug: '', path: '/zh-tw/' },
-      { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' }
-    ]
-  })
+      { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' },
+    ],
+  });
 
-  assert.equal(isBakerySiteSettings(settings), true)
-  assert.deepEqual(parseBakerySiteSettings(settings), settings)
-})
+  assert.equal(isBakerySiteSettings(settings), true);
+  assert.deepEqual(parseBakerySiteSettings(settings), settings);
+});
 
 test('settings validation rejects malformed nested values and routes', () => {
   assert.equal(
     isBakerySiteSettings({
       ...makeSiteSettings(),
-      contact: { ...makeSiteSettings().contact, phone_href: 123 }
+      contact: { ...makeSiteSettings().contact, phone_href: 123 },
     }),
-    false
-  )
+    false,
+  );
   assert.equal(
     isBakerySiteSettings(
       makeSiteSettings({
         navigation: [
-          { id: 86, title: 'TEST', slug: 'test-page', path: 'test-page' }
-        ]
-      })
+          { id: 86, title: 'TEST', slug: 'test-page', path: 'test-page' },
+        ],
+      }),
     ),
-    false
-  )
+    false,
+  );
   assert.throws(
     () => parseBakerySiteSettings({ ...makeSiteSettings(), footer_logo: {} }),
-    /site settings/i
-  )
-})
+    /site settings/i,
+  );
+});
 
 test('toNavigationItems uses only configured settings order and returns a copy', () => {
   const settings = makeSiteSettings({
     navigation: [
       { id: 60, title: '首頁', slug: '', path: '/zh-tw/' },
-      { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' }
-    ]
-  })
+      { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' },
+    ],
+  });
 
-  const navigation = toNavigationItems(settings)
-  navigation[0]!.title = 'Changed'
+  const navigation = toNavigationItems(settings);
+  navigation[0]!.title = 'Changed';
 
   assert.deepEqual(settings.navigation, [
     { id: 60, title: '首頁', slug: '', path: '/zh-tw/' },
-    { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' }
-  ])
-  assert.equal(navigation[0]!.title, 'Changed')
-})
+    { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' },
+  ]);
+  assert.equal(navigation[0]!.title, 'Changed');
+});
 
 test('settings validation enforces locale-specific public paths', () => {
   const english = makeSiteSettings({
@@ -96,33 +96,25 @@ test('settings validation enforces locale-specific public paths', () => {
     home_path: '/en/',
     navigation: [
       { id: 160, title: 'Home', slug: '', path: '/en/' },
-      { id: 191, title: 'About', slug: 'about', path: '/en/about/' }
-    ]
-  })
+      { id: 191, title: 'About', slug: 'about', path: '/en/about/' },
+    ],
+  });
 
-  assert.equal(isBakerySiteSettings(english), true)
-  assert.equal(
-    isBakerySiteSettings({ ...english, locale: 'de' }),
-    false
-  )
-  assert.equal(
-    isBakerySiteSettings({ ...english, home_path: '/' }),
-    false
-  )
+  assert.equal(isBakerySiteSettings(english), true);
+  assert.equal(isBakerySiteSettings({ ...english, locale: 'de' }), false);
+  assert.equal(isBakerySiteSettings({ ...english, home_path: '/' }), false);
   assert.equal(
     isBakerySiteSettings({
       ...english,
-      navigation: [
-        { id: 191, title: 'About', slug: 'about', path: '/about/' }
-      ]
+      navigation: [{ id: 191, title: 'About', slug: 'about', path: '/about/' }],
     }),
-    false
-  )
-})
+    false,
+  );
+});
 
 test('toBakerySiteSettings maps invalid upstream payloads to 502', () => {
   assert.throws(
     () => toBakerySiteSettings({ site_name: 'Incomplete' }),
-    (error: { statusCode?: number }) => error.statusCode === 502
-  )
-})
+    (error: { statusCode?: number }) => error.statusCode === 502,
+  );
+});
