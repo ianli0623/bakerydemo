@@ -1,7 +1,9 @@
-{% if link.internal_page %}
-    <a href="{{ link.internal_page.url }}{% if link.fragment %}#{{ link.fragment }}{% endif %}">{{ link.label }}</a>
-{% elif link.external_url %}
-    <a href="{{ link.external_url }}" rel="noopener noreferrer">{{ link.label }}</a>
-{% else %}
-    <span>{{ link.label }} <small>即將提供</small></span>
+{% if link.label %}
+    {% if link.internal_page %}
+        <a href="{{ link.internal_page.url }}{% if link.fragment %}#{{ link.fragment }}{% endif %}">{{ link.label }}</a>
+    {% elif link.external_url %}
+        <a href="{{ link.external_url }}" rel="noopener noreferrer">{{ link.label }}</a>
+    {% else %}
+        <span>{{ link.label }} <small>即將提供</small></span>
+    {% endif %}
 {% endif %}

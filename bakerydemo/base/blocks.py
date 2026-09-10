@@ -50,7 +50,10 @@ def get_image_api_representation(image, filter_spec=None):
 
 
 class ContentLinkBlock(StructBlock):
-    label = CharBlock(required=True)
+    label = CharBlock(
+        required=False,
+        help_text="不需要連結時請留空；設定連結目標時才需要填寫。",
+    )
     internal_page = PageChooserBlock(required=False)
     external_url = CharBlock(required=False)
     fragment = CharBlock(required=False)
@@ -62,9 +65,12 @@ class ContentLinkBlock(StructBlock):
         if not cleaned:
             return cleaned
         errors = {}
+        label = cleaned["label"].strip()
         internal_page = cleaned["internal_page"]
         external_url = cleaned["external_url"].strip()
         fragment = cleaned["fragment"].strip()
+        if (internal_page or external_url or fragment) and not label:
+            errors["label"] = ValidationError("設定連結目標時必須填寫連結文字。")
         if internal_page and external_url:
             destination_error = ValidationError(
                 "Choose an internal page or an external URL, not both."

@@ -73,6 +73,43 @@ class ContentLinkBlockTests(TestCase):
 
         self.assertIsNone(block.get_api_representation(value))
 
+    def test_persisted_missing_optional_link_can_be_published(self):
+        block = blocks.ContentLinkBlock(required=False)
+        value = block.to_python({})
+
+        cleaned = block.clean(value)
+
+        self.assertIsNone(block.get_api_representation(cleaned))
+
+    def test_persisted_empty_optional_link_can_be_published(self):
+        block = blocks.ContentLinkBlock(required=False)
+        value = block.to_python(
+            {
+                "label": "",
+                "internal_page": None,
+                "external_url": "",
+                "fragment": "",
+            }
+        )
+
+        self.assertEqual(block.clean(value), value)
+
+    def test_link_destination_requires_a_label(self):
+        block = blocks.ContentLinkBlock(required=False)
+        value = block.to_python(
+            {
+                "label": "",
+                "internal_page": None,
+                "external_url": "https://example.com",
+                "fragment": "",
+            }
+        )
+
+        with self.assertRaises(StructBlockValidationError) as raised:
+            block.clean(value)
+
+        self.assertIn("label", raised.exception.block_errors)
+
     def test_http_link_has_an_external_api_representation(self):
         block = blocks.ContentLinkBlock()
         value = block.to_python(
@@ -384,6 +421,36 @@ class StructuredContentBlockTests(TestCase):
         self.assertIn("<section", html)
         self.assertIn("<article", html)
         self.assertIn("即將提供", html)
+        self.assertNotIn("<a ", html)
+
+    def test_card_grid_fallback_omits_an_empty_optional_link(self):
+        block = blocks.CardGridBlock()
+        value = block.to_python(
+            {
+                "eyebrow": "",
+                "heading": "SEMI E187 標準涵蓋四大面向",
+                "introduction": "",
+                "layout": "two",
+                "cards": [
+                    {
+                        "number": "01",
+                        "eyebrow": "",
+                        "title": "作業系統規範",
+                        "summary": "要求使用長期支援的作業系統版本。",
+                        "link": {
+                            "label": "",
+                            "internal_page": None,
+                            "external_url": "",
+                            "fragment": "",
+                        },
+                    }
+                ],
+            }
+        )
+
+        html = block.render(value)
+
+        self.assertNotIn("即將提供", html)
         self.assertNotIn("<a ", html)
 
     def test_document_table_fallback_has_headers_and_anchor(self):
