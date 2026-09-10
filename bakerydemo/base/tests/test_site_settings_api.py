@@ -6,9 +6,14 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from PIL import Image as PILImage
 from wagtail.images import get_image_model
-from wagtail.models import Page, PageViewRestriction, Site
+from wagtail.models import Locale, Page, PageViewRestriction, Site
 
-from bakerydemo.base.models import HomePage, SiteSettings, StandardPage
+from bakerydemo.base.models import (
+    HomePage,
+    LocalizedSiteContent,
+    SiteSettings,
+    StandardPage,
+)
 from bakerydemo.base.public_api import phone_to_href
 
 
@@ -36,10 +41,13 @@ class PhoneHrefTests(TestCase):
 class SiteSettingsApiTests(TestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.zh_locale = Locale.objects.get_or_create(language_code="zh-hant")[0]
+        cls.en_locale = Locale.objects.get_or_create(language_code="en")[0]
         cls.root = Page.get_first_root_node()
         cls.home = HomePage(
             title="SEMI E187",
             slug="semi-site",
+            locale=cls.zh_locale,
             hero_text="推動半導體設備資安",
             hero_cta="認識標準",
         )
@@ -59,42 +67,83 @@ class SiteSettingsApiTests(TestCase):
         cls.home.add_child(instance=cls.resources)
         cls.resources.save_revision().publish()
 
-        cls.draft = StandardPage(title="草稿頁", slug="draft", live=False)
-        cls.home.add_child(instance=cls.draft)
-        cls.draft.save_revision()
-
-        cls.unrelated = StandardPage(
-            title="不相關頁面",
-            slug="unrelated",
-            show_in_menus=True,
+        cls.en_home = HomePage(
+            title="SEMI E187 Cybersecurity Certification",
+            slug="semi-site-en",
+            locale=cls.en_locale,
+            translation_key=cls.home.translation_key,
+            hero_text="Advancing semiconductor equipment cybersecurity",
+            hero_cta="About the standard",
         )
-        cls.home.add_child(instance=cls.unrelated)
-        cls.unrelated.save_revision().publish()
+        cls.root.add_child(instance=cls.en_home)
+        cls.en_home.save_revision().publish()
+
+        cls.en_about = StandardPage(
+            title="About the Standard",
+            slug="about",
+            locale=cls.en_locale,
+            translation_key=cls.about.translation_key,
+        )
+        cls.en_home.add_child(instance=cls.en_about)
+        cls.en_about.save_revision().publish()
+
+        cls.en_resources = StandardPage(
+            title="Implementation Resources",
+            slug="resources",
+            locale=cls.en_locale,
+            translation_key=cls.resources.translation_key,
+        )
+        cls.en_home.add_child(instance=cls.en_resources)
+        cls.en_resources.save_revision().publish()
 
         SiteSettings.objects.filter(site=cls.site).delete()
         cls.settings = SiteSettings.objects.create(
             site=cls.site,
+            contact_phone="02-23116228 #202",
+            contact_email="MaxYCLee@itri.org.tw",
+            primary_navigation=[
+                ("page", cls.home),
+                ("page", cls.resources),
+                ("page", cls.about),
+            ],
+        )
+        cls.zh_content = LocalizedSiteContent.objects.create(
+            site=cls.site,
+            locale=cls.zh_locale,
+            brand_label="認驗證制度",
+            title_suffix="SEMI E187",
             site_name="SEMI E187 半導體設備資安標準",
             site_tagline="推動半導體設備資安",
             contact_heading="半導體智慧製造資安合規諮詢",
             contact_name="李先生",
             contact_context="認驗證制度與流程",
-            contact_phone="02-23116228 #202",
-            contact_email="MaxYCLee@itri.org.tw",
+            footer_introduction="歡迎聯絡推動辦公室。",
             organisation_text=(
                 "© SEMI E187 Semiconductor Equipment Cybersecurity "
                 "Certification Scheme. 內容經由 ACW 官方指南編修。"
             ),
-            primary_navigation=[
-                ("page", cls.home),
-                ("page", cls.resources),
-                ("page", cls.draft),
-                ("page", cls.about),
-            ],
+        )
+        cls.en_content = LocalizedSiteContent.objects.create(
+            site=cls.site,
+            locale=cls.en_locale,
+            translation_key=cls.zh_content.translation_key,
+            brand_label="Certification Scheme",
+            title_suffix="SEMI E187",
+            site_name="SEMI E187 Semiconductor Equipment Cybersecurity Standard",
+            site_tagline="Advancing semiconductor equipment cybersecurity",
+            contact_heading="Semiconductor Cybersecurity Compliance Consultation",
+            contact_name="Mr. Lee",
+            contact_context="Certification scheme and process",
+            footer_introduction="Contact the program office for assistance.",
+            organisation_text="© SEMI E187. Adapted from the official ACW guide.",
         )
 
-    def get_settings(self):
-        return self.client.get("/api/site-settings/", HTTP_HOST="localhost")
+    def get_settings(self, locale="zh-hant"):
+        return self.client.get(
+            "/api/site-settings/",
+            {"locale": locale},
+            HTTP_HOST="localhost",
+        )
 
     def test_endpoint_returns_only_public_fields_and_explicit_live_navigation(self):
         response = self.get_settings()
@@ -103,6 +152,11 @@ class SiteSettingsApiTests(TestCase):
         self.assertEqual(
             response.json(),
             {
+                "locale": "zh-hant",
+                "home_page_id": self.home.pk,
+                "home_path": "/zh-tw/",
+                "brand_label": "認驗證制度",
+                "title_suffix": "SEMI E187",
                 "site_name": "SEMI E187 半導體設備資安標準",
                 "site_tagline": "推動半導體設備資安",
                 "contact": {
@@ -117,18 +171,26 @@ class SiteSettingsApiTests(TestCase):
                     "© SEMI E187 Semiconductor Equipment Cybersecurity "
                     "Certification Scheme. 內容經由 ACW 官方指南編修。"
                 ),
+                "footer_introduction": "歡迎聯絡推動辦公室。",
                 "footer_logo": None,
                 "navigation": [
-                    {"id": self.home.pk, "title": "首頁", "path": "/"},
+                    {
+                        "id": self.home.pk,
+                        "title": "SEMI E187",
+                        "slug": "",
+                        "path": "/zh-tw/",
+                    },
                     {
                         "id": self.resources.pk,
                         "title": "資源中心",
-                        "path": "/resources/",
+                        "slug": "resources",
+                        "path": "/zh-tw/resources/",
                     },
                     {
                         "id": self.about.pk,
                         "title": "認識標準",
-                        "path": "/about/",
+                        "slug": "about",
+                        "path": "/zh-tw/about/",
                     },
                 ],
             },
@@ -144,31 +206,82 @@ class SiteSettingsApiTests(TestCase):
         self.assertEqual(response.json()["navigation"], [])
         self.assertEqual(response.json()["contact"]["phone_href"], "")
 
-    def test_navigation_omits_restricted_and_other_site_pages(self):
+    def test_english_settings_return_english_navigation_paths(self):
+        response = self.get_settings("en")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["locale"], "en")
+        self.assertEqual(payload["home_page_id"], self.en_home.pk)
+        self.assertEqual(payload["home_path"], "/en/")
+        self.assertEqual(payload["brand_label"], "Certification Scheme")
+        self.assertEqual(payload["site_name"], self.en_content.site_name)
+        self.assertEqual(
+            payload["footer_introduction"], self.en_content.footer_introduction
+        )
+        self.assertEqual(
+            payload["navigation"],
+            [
+                {
+                    "id": self.en_home.pk,
+                    "title": self.en_home.title,
+                    "slug": "",
+                    "path": "/en/",
+                },
+                {
+                    "id": self.en_resources.pk,
+                    "title": "Implementation Resources",
+                    "slug": "resources",
+                    "path": "/en/resources/",
+                },
+                {
+                    "id": self.en_about.pk,
+                    "title": "About the Standard",
+                    "slug": "about",
+                    "path": "/en/about/",
+                },
+            ],
+        )
+
+    def test_missing_locale_defaults_to_traditional_chinese(self):
+        response = self.client.get("/api/site-settings/", HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["locale"], "zh-hant")
+        self.assertEqual(response.json()["home_page_id"], self.home.pk)
+
+    def test_unsupported_locale_is_rejected(self):
+        response = self.get_settings("de")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "Unsupported locale: de"})
+
+    def test_missing_or_unpublished_site_content_does_not_fall_back(self):
+        self.en_content.live = False
+        self.en_content.save()
+
+        response = self.get_settings("en")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_or_unpublished_page_translation_does_not_fall_back(self):
+        self.en_about.live = False
+        self.en_about.save()
+
+        response = self.get_settings("en")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_restricted_translated_navigation_page_returns_not_found(self):
         PageViewRestriction.objects.create(
-            page=self.resources,
+            page=self.en_resources,
             restriction_type=PageViewRestriction.PASSWORD,
             password="secret",
         )
-        other_root = Page(title="Other site", slug="other-site")
-        self.root.add_child(instance=other_root)
-        other_root.save_revision().publish()
-        Site.objects.create(hostname="other.test", root_page=other_root)
-        self.settings.primary_navigation = [
-            ("page", self.home),
-            ("page", self.resources),
-            ("page", other_root),
-            ("page", self.about),
-        ]
-        self.settings.save()
 
-        response = self.get_settings()
+        response = self.get_settings("en")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            [item["id"] for item in response.json()["navigation"]],
-            [self.home.pk, self.about.pk],
-        )
+        self.assertEqual(response.status_code, 404)
 
     def test_invalid_editor_contact_values_do_not_break_the_endpoint(self):
         self.settings.contact_phone = "請來信洽詢"

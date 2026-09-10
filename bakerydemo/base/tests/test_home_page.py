@@ -3,7 +3,8 @@ from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase
 from wagtail.test.utils.form_data import nested_form_data, streamfield
 
-from bakerydemo.base.models import HomePage
+from bakerydemo.account_security.services import sync_password_change
+from bakerydemo.base.models import HomePage, StandardPage
 
 
 class HomePageRenderTest(WagtailPageTestCase):
@@ -36,9 +37,12 @@ class HomePageRenderTest(WagtailPageTestCase):
         super().setUp()
 
         self.user = User.objects.create_superuser(
-            username="testadmin", email="test@example.com", password="password"
+            username="testadmin",
+            email="test@example.com",
+            password="Test-Admin-Password-1!",
         )
-        self.client.login(username="testadmin", password="password")
+        sync_password_change(self.user, must_change_password=False)
+        self.client.force_login(self.user)
 
     def test_homepage_renders(self):
         response = self.client.get(self.home.url)
@@ -66,3 +70,27 @@ class HomePageRenderTest(WagtailPageTestCase):
         )
 
         self.assertCanCreate(self.root, HomePage, home_page_data)
+
+    def test_semi_editorial_fields_are_exposed_to_the_api(self):
+        home_fields = {field.name for field in HomePage.api_fields}
+        page_fields = {field.name for field in StandardPage.api_fields}
+
+        self.assertTrue(
+            {
+                "hero_badge",
+                "secondary_hero_cta",
+                "secondary_hero_cta_link",
+                "secondary_hero_cta_fragment",
+            }
+            <= home_fields
+        )
+        self.assertTrue(
+            {
+                "section_kicker",
+                "section_heading",
+                "secondary_section_kicker",
+                "secondary_section_heading",
+                "secondary_section_introduction",
+            }
+            <= page_fields
+        )

@@ -1,11 +1,40 @@
+from django.utils.safestring import mark_safe
 from wagtail import hooks
 from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
+from wagtail.admin.views.account import AvatarSettingsPanel, ThemeSettingsPanel
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
 from bakerydemo.base.filters import RevisionFilterSetMixin
-from bakerydemo.base.models import FooterText, Person
+from bakerydemo.base.forms import (
+    ResettableAvatarPreferencesForm,
+    SimplifiedThemePreferencesForm,
+)
+from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
+
+# Ensure the account panel treats the clear checkbox as an explicit reset.
+AvatarSettingsPanel.form_class = ResettableAvatarPreferencesForm
+# Keep the remaining theme controls while hiding Wagtail-specific shortcuts.
+ThemeSettingsPanel.form_class = SimplifiedThemePreferencesForm
+
+HIDDEN_MAIN_MENU_ITEMS = {"help"}
+HIDDEN_REPORT_MENU_ITEMS = {
+    "locked-pages",
+    "page-types-usage",
+    "search-terms",
+    "workflow-tasks",
+    "workflows",
+}
+HIDDEN_SETTINGS_MENU_ITEMS = {
+    "generic-settings",
+    "locales",
+    "redirects",
+    "sites",
+    "styleguide",
+    "workflow-tasks",
+    "workflows",
+}
 
 """
 N.B. To see what icons are available for use in Wagtail menus and StreamField block types,
@@ -30,6 +59,43 @@ def register_icons(icons):
         "wagtailfontawesomesvg/solid/suitcase.svg",
         "wagtailfontawesomesvg/solid/utensils.svg",
     ]
+
+
+@hooks.register("insert_global_admin_css")
+def hide_admin_search():
+    return mark_safe(
+        """
+        <style data-hide-admin-search>
+            #wagtail-sidebar form[role="search"] { display: none; }
+        </style>
+        """
+    )
+
+
+@hooks.register("construct_main_menu")
+def hide_unused_main_menu_items(request, menu_items):
+    menu_items[:] = [
+        item for item in menu_items if item.name not in HIDDEN_MAIN_MENU_ITEMS
+    ]
+
+
+@hooks.register("construct_reports_menu")
+def hide_unused_report_menu_items(request, menu_items):
+    menu_items[:] = [
+        item for item in menu_items if item.name not in HIDDEN_REPORT_MENU_ITEMS
+    ]
+
+
+@hooks.register("construct_settings_menu")
+def hide_unused_settings_menu_items(request, menu_items):
+    menu_items[:] = [
+        item for item in menu_items if item.name not in HIDDEN_SETTINGS_MENU_ITEMS
+    ]
+
+
+@hooks.register("construct_page_action_menu")
+def hide_submit_to_moderation(menu_items, request, context):
+    menu_items[:] = [item for item in menu_items if item.name != "action-submit"]
 
 
 class CustomAccessibilityItem(ContentCheckerItem):
@@ -82,13 +148,30 @@ class FooterTextViewSet(SnippetViewSet):
     filterset_class = FooterTextFilterSet
 
 
-class BakerySnippetViewSetGroup(SnippetViewSetGroup):
-    menu_label = "Bakery Misc"
-    menu_icon = "utensils"  # change as required
-    menu_order = 300  # will put in 4th place (000 being 1st, 100 2nd)
-    items = (PersonViewSet, FooterTextViewSet)
+class LocalizedSiteContentFilterSet(RevisionFilterSetMixin, WagtailFilterSet):
+    class Meta:
+        model = LocalizedSiteContent
+        fields = {
+            "site": ["exact"],
+            "locale": ["exact"],
+            "live": ["exact"],
+        }
 
 
-# When using a SnippetViewSetGroup class to group several SnippetViewSet classes together,
-# you only need to register the SnippetViewSetGroup class with Wagtail:
-register_snippet(BakerySnippetViewSetGroup)
+class LocalizedSiteContentViewSet(SnippetViewSet):
+    model = LocalizedSiteContent
+    menu_label = "多語系網站內容"
+    icon = "globe"
+    list_display = ("site_name", "site", "locale", "live")
+    search_fields = ("site_name", "site_tagline", "contact_heading")
+    filterset_class = LocalizedSiteContentFilterSet
+
+
+class SemiSiteContentViewSetGroup(SnippetViewSetGroup):
+    menu_label = "SEMI E187 網站設定"
+    menu_icon = "globe"
+    menu_order = 200
+    items = (LocalizedSiteContentViewSet,)
+
+
+register_snippet(SemiSiteContentViewSetGroup)

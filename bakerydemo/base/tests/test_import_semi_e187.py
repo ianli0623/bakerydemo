@@ -9,9 +9,14 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from PIL import Image as PILImage
 from wagtail.images import get_image_model
-from wagtail.models import Collection, Page, Site
+from wagtail.models import Collection, Locale, Page, Site
 
-from bakerydemo.base.models import HomePage, SiteSettings, StandardPage
+from bakerydemo.base.models import (
+    HomePage,
+    LocalizedSiteContent,
+    SiteSettings,
+    StandardPage,
+)
 from bakerydemo.base.semi_e187.parser import parse_source_site
 from bakerydemo.base.semi_e187.targets import TargetValidationError, validate_targets
 
@@ -105,6 +110,7 @@ class ImportSemiE187DryRunTests(TestCase):
                 )
             ),
             "settings": SiteSettings.objects.count(),
+            "localized_site_content": LocalizedSiteContent.objects.count(),
             "images": get_image_model().objects.count(),
             "collections": Collection.objects.count(),
         }
@@ -210,6 +216,38 @@ class ImportSemiE187DryRunTests(TestCase):
 
         self.assertIn(f"about：更新（ID {about.pk}）", output)
 
+    def test_same_slug_page_in_another_locale_is_ignored(self):
+        about = StandardPage(title="Existing about", slug="about")
+        self.home.add_child(instance=about)
+        about.save_revision().publish()
+
+        other_locale = Locale.objects.create(language_code="de")
+        translated_home = HomePage(
+            title="Translated home",
+            slug="translated-home",
+            locale=other_locale,
+            hero_text="Translated",
+            hero_cta="Explore",
+        )
+        self.root.add_child(instance=translated_home)
+        translated_about = StandardPage(
+            title="Translated about",
+            slug="about",
+            locale=other_locale,
+        )
+        translated_home.add_child(instance=translated_about)
+
+        targets = validate_targets(
+            parse_source_site(self.html_dir, self.asset_dir),
+            self.home.pk,
+        )
+
+        about_target = next(
+            target for target in targets.pages if target.slug == "about"
+        )
+        self.assertEqual(about_target.action, "update")
+        self.assertEqual(about_target.page_id, about.pk)
+
     def test_publish_updates_home_and_creates_all_content(self):
         self.home.lead_title = "Legacy promo"
         self.home.lead_text = "Legacy promo text"
@@ -241,12 +279,25 @@ class ImportSemiE187DryRunTests(TestCase):
         self.assertEqual(self.home.featured_section_1_title, "")
 
         settings = SiteSettings.objects.get(site=self.site)
-        self.assertEqual(settings.title_suffix, "SEMI E187")
-        self.assertEqual(settings.contact_name, "李先生")
+        self.assertEqual(settings.contact_phone, "02-23116228 #202")
+        self.assertEqual(settings.contact_email, "MaxYCLee@itri.org.tw")
         self.assertEqual(
             [block.value.pk for block in settings.primary_navigation],
             [self.home.pk, *[page.pk for page in imported]],
         )
+        localized_content = LocalizedSiteContent.for_site_and_locale(
+            self.site,
+            Locale.objects.get(language_code="zh-hant"),
+        )
+        self.assertIsNotNone(localized_content)
+        self.assertEqual(localized_content.title_suffix, "SEMI E187")
+        self.assertEqual(localized_content.brand_label, "認驗證制度")
+        self.assertEqual(localized_content.contact_name, "李先生")
+        self.assertEqual(
+            localized_content.footer_introduction,
+            "若有合規輔導或技術疑問，歡迎聯絡推動辦公室。",
+        )
+        self.assertTrue(localized_content.revisions.exists())
         images = get_image_model().objects.filter(collection__name="SEMI E187")
         self.assertEqual(images.count(), 3)
         self.assertIn("建立頁面：4", output)

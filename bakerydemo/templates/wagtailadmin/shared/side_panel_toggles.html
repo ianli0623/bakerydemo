@@ -1,0 +1,7 @@
+{% load wagtailadmin_tags %}
+
+{% for panel in side_panels %}
+    {% if panel.name != "preview" and panel.name != "checks" and panel.name != "comments" %}
+        {% component panel.toggle %}
+    {% endif %}
+{% endfor %}

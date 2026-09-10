@@ -116,10 +116,10 @@ test('getLinkPresentation renders safe internal links including fragments', () =
       kind: 'internal',
       href: '/certification/#process',
       new_tab: false
-    }),
+    }, path => `/en${path}`),
     {
       kind: 'internal',
-      to: '/certification/#process',
+      to: '/en/certification/#process',
       label: '查看驗證流程'
     }
   )
@@ -145,8 +145,7 @@ test('getLinkPresentation preserves safe external link behavior', () => {
 test('getLinkPresentation makes unavailable and unsafe links non-interactive', () => {
   const disabled = {
     kind: 'disabled',
-    label: '下載文件',
-    status: '即將提供'
+    label: '下載文件'
   }
 
   assert.deepEqual(
@@ -209,7 +208,7 @@ test('structured SEMI sections expose the source fragment targets once', () => {
     {
       id: 'certified-cards',
       type: 'card_grid',
-      value: { heading: '驗證機構與合規名單' }
+      value: { heading: 'Certification Bodies and Compliance List' }
     },
     { id: 'cards', type: 'card_grid', value: { heading: '其他卡片' } },
     { id: 'process-a', type: 'process_steps' },
@@ -218,8 +217,14 @@ test('structured SEMI sections expose the source fragment targets once', () => {
     { id: 'case-b', type: 'case_study' }
   ]
 
-  assert.equal(getStructuredBlockAnchor(blocks[0]!, blocks), 'certified-list')
-  assert.equal(getStructuredBlockAnchor(blocks[1]!, blocks), undefined)
+  assert.equal(
+    getStructuredBlockAnchor(blocks[0]!, blocks, [], 'certification'),
+    'certified-list'
+  )
+  assert.equal(
+    getStructuredBlockAnchor(blocks[1]!, blocks, [], 'certification'),
+    undefined
+  )
   assert.equal(getStructuredBlockAnchor(blocks[2]!, blocks), 'vendor-process')
   assert.equal(getStructuredBlockAnchor(blocks[3]!, blocks), undefined)
   assert.equal(getStructuredBlockAnchor(blocks[4]!, blocks), 'case-studies')
@@ -240,13 +245,14 @@ test('structured blocks defer an anchor already owned by their containing sectio
   const certifiedBlocks = [{
     id: 'certified-cards',
     type: 'card_grid',
-    value: { heading: '驗證機構與合規名單' }
+    value: { heading: 'Certification Bodies and Compliance List' }
   }]
   assert.equal(
     getStructuredBlockAnchor(
       certifiedBlocks[0]!,
       certifiedBlocks,
-      ['certified-list']
+      ['certified-list'],
+      'certification'
     ),
     undefined
   )

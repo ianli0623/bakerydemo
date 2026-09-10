@@ -1,0 +1,125 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bakerydemo account security\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-02 00:00+0000\n"
+"PO-Revision-Date: 2026-09-02 00:00+0000\n"
+"Language: zh_Hant\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "The username or password is incorrect, or this account is temporarily unavailable."
+msgstr "帳號或密碼錯誤，或此帳號目前暫時無法登入。"
+
+msgid "The password must contain at least 12 characters."
+msgstr "密碼至少必須包含 12 個字元。"
+
+msgid "The password must contain an uppercase English letter."
+msgstr "密碼至少必須包含 1 個英文大寫字母。"
+
+msgid "The password must contain a lowercase English letter."
+msgstr "密碼至少必須包含 1 個英文小寫字母。"
+
+msgid "The password must contain a number."
+msgstr "密碼至少必須包含 1 個數字。"
+
+msgid "The password must contain a symbol."
+msgstr "密碼至少必須包含 1 個特殊符號。"
+
+msgid "Use at least 12 characters with uppercase, lowercase, number, and symbol."
+msgstr "請使用至少 12 個字元，並包含英文大寫、英文小寫、數字及特殊符號。"
+
+msgid "This password was recently used. Choose a different password."
+msgstr "這組密碼最近使用過，請選擇其他密碼。"
+
+msgid "The new password cannot match any of your 3 most recent passwords."
+msgstr "新密碼不能與最近使用的 3 組密碼相同。"
+
+msgid "Current password"
+msgstr "目前密碼"
+
+msgid "New password"
+msgstr "新密碼"
+
+msgid "Confirm new password"
+msgstr "確認新密碼"
+
+msgid "The current password is incorrect."
+msgstr "目前密碼不正確。"
+
+msgid "The two password fields did not match."
+msgstr "兩次輸入的新密碼不一致。"
+
+msgid "Change password"
+msgstr "變更密碼"
+
+msgid "Your password must be changed before you can continue."
+msgstr "您必須先變更密碼，才能繼續使用後台。"
+
+msgid "Save new password"
+msgstr "儲存新密碼"
+
+msgid "Sign out"
+msgstr "登出"
+
+msgid "Unable to sign in"
+msgstr "目前無法登入"
+
+msgid "Return to sign in"
+msgstr "返回登入頁"
+
+msgid "User created"
+msgstr "使用者已建立"
+
+#, python-format
+msgid "User \"%(username)s\" was created successfully."
+msgstr "使用者「%(username)s」已成功建立。"
+
+msgid "Copy this temporary password now. It will not be shown again."
+msgstr "請立即複製這組臨時密碼，離開此頁後將不再顯示。"
+
+msgid "Temporary password"
+msgstr "臨時密碼"
+
+msgid "Copy password"
+msgstr "複製密碼"
+
+msgid "Password copied."
+msgstr "密碼已複製。"
+
+msgid "The user must change this temporary password after signing in."
+msgstr "此使用者登入後必須先變更臨時密碼。"
+
+msgid "Back to users"
+msgstr "返回使用者列表"
+
+#, python-format
+msgid "Your password will expire on %(date)s. %(days)d days remaining."
+msgstr "密碼將於 %(date)s 到期，剩餘 %(days)d 天。"
+
+msgid "Change password now"
+msgstr "立即變更密碼"
+
+msgid "Password expiry reminders"
+msgstr "密碼到期提醒"
+
+msgid "Active admin users whose passwords expire within 30 days."
+msgstr "密碼將於 30 天內到期的有效後台使用者。"
+
+msgid "Last password change"
+msgstr "最後變更密碼時間"
+
+msgid "Expiry date"
+msgstr "到期日"
+
+msgid "Status"
+msgstr "狀態"
+
+#, python-format
+msgid "%(days)s days"
+msgstr "%(days)s 天"
+
+msgid "No active admin users have passwords expiring within 30 days."
+msgstr "目前沒有密碼將於 30 天內到期的有效後台使用者。"

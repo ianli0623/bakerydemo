@@ -1,0 +1,58 @@
+{
+  "accessibility": {
+    "skipToContent": "Skip to main content",
+    "toolbar": "Website accessibility tools",
+    "fontSize": "Text size",
+    "fontSmaller": "Decrease text size",
+    "fontReset": "Reset text size",
+    "fontLarger": "Increase text size"
+  },
+  "language": {
+    "label": "Language",
+    "traditionalChinese": "繁體中文",
+    "english": "English"
+  },
+  "navigation": {
+    "label": "Primary navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "home": "Home",
+    "contact": "Contact us",
+    "footer": "Footer navigation"
+  },
+  "contact": {
+    "headingFallback": "SEMI E187 compliance inquiries",
+    "phone": "Phone",
+    "email": "Email"
+  },
+  "status": {
+    "loading": "Loading content…",
+    "error": "Unable to load the content.",
+    "retry": "Try again",
+    "unavailable": "Currently unavailable",
+    "notFound": "The requested published page could not be found.",
+    "navigationError": "The menu is temporarily unavailable.",
+    "configurationError": "The Bakery API is not configured. Check NUXT_BAKERY_BASE_URL.",
+    "cmsUnavailable": "The Bakery CMS is unavailable. Make sure Wagtail is running.",
+    "homeLoading": "Loading the home page",
+    "homeLoadError": "Unable to load the home page",
+    "homeMissingTitle": "Home page content is unavailable",
+    "homeMissing": "Make sure the Wagtail home page is published.",
+    "pageLoading": "Loading the page",
+    "pageLoadError": "Unable to load the page"
+  },
+  "documents": {
+    "number": "No.",
+    "title": "Document",
+    "summary": "Summary",
+    "status": "Status"
+  },
+  "embed": {
+    "openMedia": "Open external media",
+    "videoTitle": "Embedded video"
+  },
+  "mobile": {
+    "menu": "Mobile menu",
+    "language": "Switch language"
+  }
+}

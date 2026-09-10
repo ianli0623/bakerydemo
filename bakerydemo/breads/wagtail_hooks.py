@@ -7,7 +7,6 @@ from wagtail.admin.ui.tables import Column
 from wagtail.admin.views.pages.listing import PageFilterSet
 from wagtail.admin.viewsets.model import ModelViewSet
 from wagtail.admin.viewsets.pages import PageListingViewSet
-from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
 from bakerydemo.base.filters import RevisionFilterSetMixin
@@ -107,6 +106,3 @@ class BreadMenuGroup(SnippetViewSetGroup):
         BreadTypeSnippetViewSet,
         CountryModelViewSet,
     )
-
-
-register_snippet(BreadMenuGroup)

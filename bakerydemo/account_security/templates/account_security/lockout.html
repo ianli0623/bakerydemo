@@ -1,0 +1,17 @@
+{% extends "wagtailadmin/admin_base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% translate "Unable to sign in" %}{% endblock %}
+{% block bodyclass %}login{% endblock %}
+
+{% block furniture %}
+  <main class="content-wrapper" id="main">
+    <h1>{% translate "Unable to sign in" %}</h1>
+    <p role="alert">{{ message }}</p>
+    <p>
+      <a class="button" href="{% url 'wagtailadmin_login' %}">
+        {% translate "Return to sign in" %}
+      </a>
+    </p>
+  </main>
+{% endblock %}

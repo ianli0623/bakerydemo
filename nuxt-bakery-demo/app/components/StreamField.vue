@@ -15,7 +15,10 @@ import {
 const props = defineProps<{
   blocks: BakeryStreamBlock[]
   reservedAnchors?: string[]
+  pageSlug?: string
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -65,7 +68,12 @@ const props = defineProps<{
 
       <CardGrid
         v-else-if="block.type === 'card_grid'"
-        :id="getStructuredBlockAnchor(block, props.blocks, props.reservedAnchors)"
+        :id="getStructuredBlockAnchor(
+          block,
+          props.blocks,
+          props.reservedAnchors,
+          props.pageSlug
+        )"
         :value="block.value"
       />
 
@@ -76,13 +84,23 @@ const props = defineProps<{
 
       <ProcessSteps
         v-else-if="block.type === 'process_steps'"
-        :id="getStructuredBlockAnchor(block, props.blocks, props.reservedAnchors)"
+        :id="getStructuredBlockAnchor(
+          block,
+          props.blocks,
+          props.reservedAnchors,
+          props.pageSlug
+        )"
         :value="block.value"
       />
 
       <CaseStudy
         v-else-if="block.type === 'case_study'"
-        :id="getStructuredBlockAnchor(block, props.blocks, props.reservedAnchors)"
+        :id="getStructuredBlockAnchor(
+          block,
+          props.blocks,
+          props.reservedAnchors,
+          props.pageSlug
+        )"
         :value="block.value"
       />
 
@@ -93,7 +111,7 @@ const props = defineProps<{
         <iframe
           v-if="getEmbedPresentation(block.value)?.kind === 'iframe'"
           :src="getEmbedPresentation(block.value)?.url"
-          title="嵌入內容"
+          :title="t('embed.videoTitle')"
           loading="lazy"
           allowfullscreen
         />
@@ -103,7 +121,7 @@ const props = defineProps<{
           target="_blank"
           rel="noopener noreferrer"
         >
-          在新分頁開啟嵌入內容
+          {{ t('embed.openMedia') }}
         </a>
       </div>
     </template>

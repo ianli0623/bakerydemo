@@ -1,0 +1,58 @@
+{
+  "accessibility": {
+    "skipToContent": "跳到主要內容",
+    "toolbar": "網站輔助工具",
+    "fontSize": "字級",
+    "fontSmaller": "縮小字級",
+    "fontReset": "還原字級",
+    "fontLarger": "放大字級"
+  },
+  "language": {
+    "label": "語言",
+    "traditionalChinese": "繁體中文",
+    "english": "English"
+  },
+  "navigation": {
+    "label": "主要導覽",
+    "openMenu": "開啟選單",
+    "closeMenu": "關閉選單",
+    "home": "首頁",
+    "contact": "聯絡我們",
+    "footer": "頁尾導覽"
+  },
+  "contact": {
+    "headingFallback": "SEMI E187 合規諮詢",
+    "phone": "電話",
+    "email": "信箱"
+  },
+  "status": {
+    "loading": "內容載入中…",
+    "error": "內容載入失敗。",
+    "retry": "重新載入",
+    "unavailable": "目前無法使用",
+    "notFound": "找不到指定的已發布頁面。",
+    "navigationError": "選單暫時無法載入",
+    "configurationError": "Bakery API 尚未設定，請檢查 NUXT_BAKERY_BASE_URL。",
+    "cmsUnavailable": "目前無法連線到 Bakery CMS，請確認 Wagtail 已啟動。",
+    "homeLoading": "首頁載入中",
+    "homeLoadError": "首頁讀取失敗",
+    "homeMissingTitle": "尚未取得首頁內容",
+    "homeMissing": "請確認 Wagtail 首頁已發布。",
+    "pageLoading": "頁面載入中",
+    "pageLoadError": "頁面讀取失敗"
+  },
+  "documents": {
+    "number": "編號",
+    "title": "文件名稱",
+    "summary": "內容摘要",
+    "status": "狀態"
+  },
+  "embed": {
+    "openMedia": "開啟外部媒體",
+    "videoTitle": "嵌入影片"
+  },
+  "mobile": {
+    "menu": "行動版選單",
+    "language": "切換語言"
+  }
+}

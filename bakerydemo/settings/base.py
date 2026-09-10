@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/stable/ref/settings/
 """
 
 import os
+from datetime import timedelta
 
 import dj_database_url
 
@@ -37,6 +38,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "bakerydemo.account_security.apps.AccountSecurityConfig",
     "bakerydemo.base",
     "bakerydemo.blog",
     "bakerydemo.breads",
@@ -45,7 +47,7 @@ INSTALLED_APPS = [
     "bakerydemo.search",
     "wagtail.embeds",
     "wagtail.sites",
-    "wagtail.users",
+    "bakerydemo.account_security.wagtail_users.SecureWagtailUsersAppConfig",
     "wagtail.snippets",
     "wagtail.documents",
     "wagtail.images",
@@ -67,6 +69,7 @@ INSTALLED_APPS = [
     "modelcluster",
     "taggit",
     "wagtailfontawesomesvg",
+    "axes",
     # Uncomment to enable django-debug-toolbar
     # "debug_toolbar",
     "django_extensions",
@@ -85,10 +88,12 @@ MIDDLEWARE = [
     # "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "bakerydemo.account_security.middleware.PasswordPolicyMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
@@ -145,6 +150,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
+    {
+        "NAME": "bakerydemo.account_security.validators.PasswordComplexityValidator",
+    },
+    {
+        "NAME": "bakerydemo.account_security.validators.PasswordHistoryValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -154,11 +166,41 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+ACCOUNT_SECURITY_PASSWORD_MAX_AGE_DAYS = 90
+ACCOUNT_SECURITY_PROTECTED_PREFIXES = ("/admin/", "/django-admin/")
+ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS = False
+
+# Wagtail 7.4 embeds password editing in the account page. Disable that editor
+# so every password change uses the transactional security flow above.
+WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
+
+AXES_HANDLER = "axes.handlers.database.AxesDatabaseHandler"
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = ["username", ["username", "ip_address"]]
+AXES_USERNAME_CALLABLE = (
+    "bakerydemo.account_security.authentication.normalize_login_username"
+)
+AXES_RESET_ON_SUCCESS = True
+AXES_ENABLE_RETRY_AFTER_HEADER = True
+AXES_ENABLE_ACCESS_FAILURE_LOG = True
+AXES_HTTP_RESPONSE_CODE = 429
+AXES_LOCKOUT_CALLABLE = "bakerydemo.account_security.views.lockout_response"
+
+WAGTAILADMIN_USER_LOGIN_FORM = (
+    "bakerydemo.account_security.forms.SecurityWagtailLoginForm"
+)
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hant"
 
 TIME_ZONE = "UTC"
 
@@ -266,9 +308,8 @@ WAGTAIL_SITE_NAME = "The Wagtail Bakery"
 WAGTAIL_I18N_ENABLED = True
 
 WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
+    ("zh-hant", "繁體中文"),
     ("en", "English"),
-    ("de", "German"),
-    ("ar", "Arabic"),
 ]
 
 WAGTAILIMAGES_AVIF_QUALITY = 60
@@ -295,6 +336,7 @@ if "CSP_DEFAULT_SRC" in os.environ:
         CSP_STYLE_SRC = os.environ.get("CSP_STYLE_SRC").split(",")
     if "CSP_IMG_SRC" in os.environ:
         CSP_IMG_SRC = os.environ.get("CSP_IMG_SRC").split(",")
+
     if "CSP_CONNECT_SRC" in os.environ:
         CSP_CONNECT_SRC = os.environ.get("CSP_CONNECT_SRC").split(",")
     if "CSP_FONT_SRC" in os.environ:
@@ -307,3 +349,6 @@ if "CSP_DEFAULT_SRC" in os.environ:
         CSP_FRAME_SRC = os.environ.get("CSP_FRAME_SRC").split(",")
     if "CSP_REPORT_URI" in os.environ:
         CSP_REPORT_URI = os.environ.get("CSP_REPORT_URI")
+
+# Axes must remain the final middleware so it can replace any locked response.
+MIDDLEWARE.append("axes.middleware.AxesMiddleware")

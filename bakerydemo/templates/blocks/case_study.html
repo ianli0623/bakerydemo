@@ -27,7 +27,7 @@
         {{ value.solution|richtext }}
     </section>
     <section>
-        <h3>資安控制措施</h3>
+        <h3>{{ value.security_controls_heading }}</h3>
         {% for control in value.security_controls %}
             <article>
                 <h4>{{ control.title }}</h4>

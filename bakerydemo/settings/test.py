@@ -6,7 +6,10 @@ from .base import STORAGES
 ALLOWED_HOSTS = ["*"]
 
 # Don't redirect to HTTPS in tests or send the HSTS header
+ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS = False
 SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 SECURE_HSTS_SECONDS = 0
 
 STORAGES["staticfiles"]["BACKEND"] = (

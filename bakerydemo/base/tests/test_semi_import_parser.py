@@ -45,6 +45,42 @@ class SemiImportParserTests(SimpleTestCase):
     def parse(self):
         return parse_source_site(self.html_dir, self.asset_dir)
 
+    def test_preserves_every_visible_section_heading_for_editorial_translation(self):
+        plan = self.parse()
+
+        self.assertEqual(plan.home.hero_badge, "標準認知 × 技術資源 × 驗證合規")
+        self.assertEqual(plan.home.secondary_hero_cta, "合規設備清單")
+        self.assertEqual(plan.home.secondary_hero_cta_link.target_slug, "certification")
+        self.assertEqual(plan.home.secondary_hero_cta_link.fragment, "certified-list")
+        self.assertEqual(plan.page("about").section_kicker, "ABOUT SEMI E187")
+        self.assertEqual(plan.page("about").section_heading, "關於標準與背景介紹")
+        self.assertEqual(
+            plan.page("certification").section_heading,
+            "驗證與合規專區",
+        )
+        self.assertEqual(
+            plan.page("ecosystem").secondary_section_kicker,
+            "DEMONSTRATION SITES",
+        )
+        self.assertEqual(
+            plan.page("ecosystem").secondary_section_heading,
+            "設備廠商導入應用案例",
+        )
+        self.assertEqual(
+            plan.page("ecosystem").secondary_section_introduction,
+            "提供 SEMI E187 導入實務示範。",
+        )
+        cases = [
+            block for block in plan.page("ecosystem").body if block.type == "case_study"
+        ]
+        self.assertTrue(cases)
+        self.assertTrue(
+            all(
+                case.value["security_controls_heading"] == "資安控制重點"
+                for case in cases
+            )
+        )
+
     def test_parses_exact_page_order_block_sequences_and_counts(self):
         plan = self.parse()
 
@@ -89,6 +125,11 @@ class SemiImportParserTests(SimpleTestCase):
         )
         self.assertEqual(plan.settings.contact_name, "李先生")
         self.assertEqual(plan.settings.contact_context, "認驗證制度與流程")
+        self.assertEqual(plan.settings.brand_label, "認驗證制度")
+        self.assertEqual(
+            plan.settings.footer_introduction,
+            "若有合規輔導或技術疑問，歡迎聯絡推動辦公室。",
+        )
         self.assertEqual(plan.settings.contact_phone, "02-23116228 #202")
         topic_cards = plan.home.body[1].value["cards"]
         self.assertEqual(topic_cards[0]["link"].target_slug, "about")
@@ -98,6 +139,52 @@ class SemiImportParserTests(SimpleTestCase):
         )
         self.assertTrue(
             any(warning.code == "optional-asset-missing" for warning in plan.warnings)
+        )
+
+    def test_parses_the_final_five_page_split_layout(self):
+        index_path = self.html_dir / "index.html"
+        index = BeautifulSoup(index_path.read_text(encoding="utf-8"), "html.parser")
+        index.select_one("#site-sections").decompose()
+        hero_links = index.select("header#home > a")
+        hero_links[1]["href"] = "#certified-list"
+        for news_link in index.select('aside[aria-label="最新消息"] a'):
+            news_link["href"] = "#documents-table"
+        index_path.write_text(str(index), encoding="utf-8")
+
+        page_titles = {
+            "about.html": "認識標準",
+            "resources.html": "導入資源",
+            "certification.html": "驗證與合規",
+            "ecosystem.html": "案例與生態",
+        }
+        for filename, title in page_titles.items():
+            path = self.html_dir / filename
+            page = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+            page.header.decompose()
+            active_link = page.new_tag(
+                "a",
+                href=filename,
+                attrs={"aria-current": "page"},
+            )
+            active_link.string = title
+            page.body.insert(0, active_link)
+            path.write_text(str(page), encoding="utf-8")
+
+        plan = self.parse()
+
+        self.assertEqual([block.type for block in plan.home.body], ["card_grid"])
+        self.assertEqual(plan.home.secondary_hero_cta_link.target_slug, "certification")
+        self.assertEqual(plan.home.secondary_hero_cta_link.fragment, "certified-list")
+        self.assertTrue(
+            all(
+                card["link"].target_slug == "resources"
+                and card["link"].fragment == "documents-table"
+                for card in plan.home.body[0].value["cards"]
+            )
+        )
+        self.assertEqual(
+            [page.title for page in plan.pages],
+            list(page_titles.values()),
         )
 
     def test_plan_is_deterministic_and_nested_block_values_are_immutable(self):
@@ -249,6 +336,22 @@ class SemiImportParserTests(SimpleTestCase):
                 for item in step["checklist"]
             )
         )
+
+    def test_section_kicker_uses_the_first_label_when_cards_have_more_labels(self):
+        path = self.html_dir / "certification.html"
+        source = path.read_text(encoding="utf-8")
+        path.write_text(
+            source.replace(
+                '<div id="certified-list"',
+                '<span class="section-kicker">COMPLIANCE BODIES</span>'
+                '<div id="certified-list"',
+            ),
+            encoding="utf-8",
+        )
+
+        page = self.parse().page("certification")
+
+        self.assertEqual(page.section_kicker, "CERTIFICATION & COMPLIANCE")
 
     def test_rejects_invalid_contact_email_and_phone(self):
         path = self.html_dir / "index.html"

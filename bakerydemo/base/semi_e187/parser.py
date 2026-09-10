@@ -1,6 +1,7 @@
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
 from types import MappingProxyType
@@ -50,6 +51,7 @@ ASSET_METADATA = {
 }
 PAGE_ORDER = ("about", "resources", "certification", "ecosystem")
 SETTINGS_FIELD_LIMITS = {
+    "brand label": 100,
     "site name": 255,
     "site tagline": 255,
     "contact heading": 255,
@@ -83,16 +85,34 @@ def _next_sibling(tag: Tag, name: str, source_name: str, section: str) -> Tag:
     return sibling
 
 
-def _page_header(soup, source_name: str) -> tuple[str, str, str]:
-    title = require_text(soup, "header h1", source_name)
-    heading = require_one(soup, "header h1", source_name)
+def _page_header(
+    soup,
+    source_name: str,
+    section_heading: Tag,
+) -> tuple[str, str, str]:
+    heading = soup.select_one("header h1")
+    if heading is not None:
+        title = _text(heading, source_name, "header heading")
+        introduction_tag = heading.find_next_sibling("p")
+    else:
+        title = require_text(soup, 'a[aria-current="page"]', source_name)
+        introduction_tag = section_heading.find_next_sibling(["p", "div"])
+    if introduction_tag is None:
+        raise SourceValidationError(f"{source_name}：page introduction 缺少 p 或 div")
     introduction = _text(
-        _next_sibling(heading, "p", source_name, "header introduction"),
+        introduction_tag,
         source_name,
-        "header introduction",
+        "page introduction",
     )
     seo_title = require_text(soup, "title", source_name)
     return title, introduction, seo_title
+
+
+def _section_kicker(section: Tag, source_name: str) -> str:
+    kicker = section.select_one(".section-kicker")
+    if kicker is None:
+        raise SourceValidationError(f"{source_name}：.section-kicker 預期至少 1 個")
+    return _text(kicker, source_name, "section kicker")
 
 
 def _link(tag: Tag, current_slug: str) -> SourceLink:
@@ -101,6 +121,20 @@ def _link(tag: Tag, current_slug: str) -> SourceLink:
         str(tag.get("href", "")),
         current_slug,
     )
+
+
+HOME_FRAGMENT_TARGETS = {
+    "certified-list": "certification",
+    "documents-table": "resources",
+}
+
+
+def _home_link(tag: Tag) -> SourceLink:
+    link = _link(tag, "")
+    target_slug = HOME_FRAGMENT_TARGETS.get(link.fragment)
+    if link.target_slug == "" and target_slug is not None:
+        return replace(link, target_slug=target_slug)
+    return link
 
 
 def _card_from_heading(heading: Tag, current_slug: str, number: str = "") -> dict:
@@ -257,6 +291,9 @@ def parse_home(html: str) -> HomeImport:
     soup = parse_html(html)
     header = require_one(soup, "header#home", source_name)
     heading = require_one(header, "h1", source_name)
+    badge = heading.find_previous_sibling("div")
+    if badge is None:
+        raise SourceValidationError(f"{source_name}：hero badge 缺少 div")
     title = _text(heading, source_name, "hero heading")
     tagline_tag = _next_sibling(heading, "p", source_name, "hero tagline")
     _text(tagline_tag, source_name, "hero tagline")
@@ -268,9 +305,10 @@ def parse_home(html: str) -> HomeImport:
     )
     lead = _text(lead_tag, source_name, "hero introduction")
     header_links = header.find_all("a")
-    if not header_links:
-        raise SourceValidationError(f"{source_name}：hero CTA 缺少連結")
-    hero_cta = _link(header_links[0], "")
+    if len(header_links) < 2:
+        raise SourceValidationError(f"{source_name}：hero CTA 連結少於 2 個")
+    hero_cta = _home_link(header_links[0])
+    secondary_hero_cta = _home_link(header_links[1])
 
     news = require_one(header, 'aside[aria-label="最新消息"]', source_name)
     news_links = news.find_all("a")
@@ -285,59 +323,66 @@ def parse_home(html: str) -> HomeImport:
                 "eyebrow": "最新消息",
                 "title": _text(parts[1], source_name, "最新消息標題"),
                 "summary": _text(parts[1], source_name, "最新消息標題"),
-                "link": _link(link_tag, ""),
+                "link": _home_link(link_tag),
             }
         )
 
-    topics = require_one(soup, "section#site-sections", source_name)
-    topic_links = topics.find_all("a")
-    require_count(topic_links, 4, source_name, "site-sections")
-    topic_cards = []
-    for index, link_tag in enumerate(topic_links, start=1):
-        topic_cards.append(
-            _card_from_heading(
-                require_one(link_tag, "h3", source_name),
-                "",
-                f"{index:02d}",
+    body = [_card_grid("最新消息", "", news_cards, "two")]
+    topics = soup.select_one("section#site-sections")
+    if topics is not None:
+        topic_links = topics.find_all("a")
+        require_count(topic_links, 4, source_name, "site-sections")
+        topic_cards = []
+        for index, link_tag in enumerate(topic_links, start=1):
+            topic_cards.append(
+                _card_from_heading(
+                    require_one(link_tag, "h3", source_name),
+                    "",
+                    f"{index:02d}",
+                )
             )
-        )
-
-    body = (
-        _card_grid("最新消息", "", news_cards, "two"),
-        _card_grid(
-            require_text(topics, "h2", source_name),
-            _text(
-                _next_sibling(
-                    require_one(topics, "h2", source_name),
-                    "p",
+        body.append(
+            _card_grid(
+                require_text(topics, "h2", source_name),
+                _text(
+                    _next_sibling(
+                        require_one(topics, "h2", source_name),
+                        "p",
+                        source_name,
+                        "site-sections introduction",
+                    ),
                     source_name,
                     "site-sections introduction",
                 ),
-                source_name,
-                "site-sections introduction",
-            ),
-            topic_cards,
-            "four",
-            "EXPLORE THE SITE",
-        ),
-    )
+                topic_cards,
+                "four",
+                "EXPLORE THE SITE",
+            )
+        )
     return HomeImport(
         title=title,
         seo_title=require_text(soup, "title", source_name),
         search_description=lead,
+        hero_badge=_text(badge, source_name, "hero badge"),
         hero_text=lead,
         hero_cta=hero_cta.label,
         hero_cta_link=hero_cta,
-        body=body,
+        secondary_hero_cta=secondary_hero_cta.label,
+        secondary_hero_cta_link=secondary_hero_cta,
+        body=tuple(body),
     )
 
 
 def parse_about(html: str) -> PageImport:
     source_name = "about.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#about", source_name)
     about_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        about_heading,
+    )
     narrative = _next_sibling(
         about_heading,
         "div",
@@ -361,6 +406,11 @@ def parse_about(html: str) -> PageImport:
         seo_title=seo_title,
         search_description=introduction,
         introduction=introduction,
+        section_kicker=_section_kicker(section, source_name),
+        section_heading=_text(about_heading, source_name, "about heading"),
+        secondary_section_kicker="",
+        secondary_section_heading="",
+        secondary_section_introduction="",
         body=(
             BlockImport("paragraph_block", rich_text),
             _card_grid(dimensions_heading, "", cards, "two"),
@@ -371,9 +421,13 @@ def parse_about(html: str) -> PageImport:
 def parse_resources(html: str) -> PageImport:
     source_name = "resources.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#resources", source_name)
     section_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        section_heading,
+    )
     section_intro = _text(
         _next_sibling(
             section_heading,
@@ -436,6 +490,11 @@ def parse_resources(html: str) -> PageImport:
         seo_title=seo_title,
         search_description=introduction,
         introduction=introduction,
+        section_kicker=_section_kicker(section, source_name),
+        section_heading=_text(section_heading, source_name, "resources heading"),
+        secondary_section_kicker="",
+        secondary_section_heading="",
+        secondary_section_introduction="",
         body=(
             _card_grid(
                 _text(section_heading, source_name, "resources heading"),
@@ -451,9 +510,13 @@ def parse_resources(html: str) -> PageImport:
 def parse_certification(html: str) -> PageImport:
     source_name = "certification.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#certification", source_name)
     overview_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        overview_heading,
+    )
     overview = _next_sibling(
         overview_heading,
         "p",
@@ -535,6 +598,15 @@ def parse_certification(html: str) -> PageImport:
         seo_title=seo_title,
         search_description=introduction,
         introduction=introduction,
+        section_kicker=_section_kicker(section, source_name),
+        section_heading=_text(
+            overview_heading,
+            source_name,
+            "certification heading",
+        ),
+        secondary_section_kicker="",
+        secondary_section_heading="",
+        secondary_section_introduction="",
         body=(
             BlockImport("paragraph_block", sanitize_rich_text([overview])),
             _card_grid(
@@ -679,6 +751,7 @@ def _case_study(
                 "case solution heading",
             ),
             "solution": sanitize_rich_text([solution]),
+            "security_controls_heading": "資安控制重點",
             "security_controls": tuple(controls),
             "outcome_image": image_names[1],
             "outcome_caption": captions[1],
@@ -692,15 +765,30 @@ def parse_ecosystem(
 ) -> PageImport:
     source_name = "ecosystem.html"
     soup = parse_html(html)
-    title, introduction, seo_title = _page_header(soup, source_name)
     section = require_one(soup, "section#ecosystem", source_name)
     section_heading = require_one(section, "h2", source_name)
+    title, introduction, seo_title = _page_header(
+        soup,
+        source_name,
+        section_heading,
+    )
     overview_headings = section.find_all("h4")
     require_count(overview_headings, 2, source_name, "ecosystem overview cards")
     overview_cards = [
         _card_from_heading(heading, "ecosystem") for heading in overview_headings
     ]
     cases = require_one(soup, "section#case-studies", source_name)
+    cases_heading = require_one(cases, "h2", source_name)
+    cases_introduction = _text(
+        _next_sibling(
+            cases_heading,
+            "p",
+            source_name,
+            "case-studies introduction",
+        ),
+        source_name,
+        "case-studies introduction",
+    )
     articles = cases.find_all("article")
     require_count(articles, 2, source_name, "case-studies")
     case_blocks = tuple(
@@ -712,6 +800,15 @@ def parse_ecosystem(
         seo_title=seo_title,
         search_description=introduction,
         introduction=introduction,
+        section_kicker=_section_kicker(section, source_name),
+        section_heading=_text(section_heading, source_name, "ecosystem heading"),
+        secondary_section_kicker=_section_kicker(cases, source_name),
+        secondary_section_heading=_text(
+            cases_heading,
+            source_name,
+            "case-studies heading",
+        ),
+        secondary_section_introduction=cases_introduction,
         body=(
             _card_grid(
                 _text(section_heading, source_name, "ecosystem heading"),
@@ -738,7 +835,9 @@ def _parse_settings(html: str, assets: Mapping[str, SourceAsset]) -> SiteSetting
     soup = parse_html(html)
     heading = require_one(soup, "header#home h1", source_name)
     heading_text = _text(heading, source_name, "hero heading")
-    site_name = heading_text.partition(" 與認驗證制度")[0]
+    site_name, separator, brand_label = heading_text.partition(" 與")
+    if not separator or not brand_label:
+        raise SourceValidationError(f"{source_name}：hero heading 缺少品牌標籤")
     site_tagline = _text(
         _next_sibling(heading, "p", source_name, "hero tagline"),
         source_name,
@@ -774,6 +873,7 @@ def _parse_settings(html: str, assets: Mapping[str, SourceAsset]) -> SiteSetting
         raise SourceValidationError(f"{source_name}：contact email 格式不符") from error
     return SiteSettingsImport(
         title_suffix="SEMI E187",
+        brand_label=_settings_text(brand_label, "brand label", source_name),
         site_name=_settings_text(site_name, "site name", source_name),
         site_tagline=_settings_text(site_tagline, "site tagline", source_name),
         contact_heading=_settings_text(
@@ -793,6 +893,11 @@ def _parse_settings(html: str, assets: Mapping[str, SourceAsset]) -> SiteSetting
         ),
         contact_phone=_settings_text(phone, "contact phone", source_name),
         contact_email=_settings_text(email, "contact email", source_name),
+        footer_introduction=_text(
+            paragraphs[0],
+            source_name,
+            "footer introduction",
+        ),
         organisation_text=_text(paragraphs[-1], source_name, "organisation text"),
         footer_logo=("adi-logo-white.png" if "adi-logo-white.png" in assets else None),
         navigation_slugs=("", *PAGE_ORDER),

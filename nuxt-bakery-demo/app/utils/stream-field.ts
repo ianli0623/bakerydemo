@@ -52,10 +52,10 @@ export function getImagePresentation(
 export type LinkPresentation =
   | { kind: 'internal'; to: string; label: string }
   | { kind: 'external'; href: string; label: string; newTab: boolean }
-  | { kind: 'disabled'; label: string; status: '即將提供' }
+  | { kind: 'disabled'; label: string }
 
 function disabledLink(label: string): LinkPresentation {
-  return { kind: 'disabled', label, status: '即將提供' }
+  return { kind: 'disabled', label }
 }
 
 function isSafeInternalHref(href: string): boolean {
@@ -81,12 +81,16 @@ function isSafeExternalHref(href: string): boolean {
 }
 
 export function getLinkPresentation(
-  link: BakeryContentLink
+  link: BakeryContentLink,
+  localizePath: (path: string) => string = path => path
 ): LinkPresentation {
   const href = link.href?.trim() ?? ''
+  const resolvePath = typeof localizePath === 'function'
+    ? localizePath
+    : (path: string) => path
 
   if (link.kind === 'internal' && isSafeInternalHref(href)) {
-    return { kind: 'internal', to: href, label: link.label }
+    return { kind: 'internal', to: resolvePath(href), label: link.label }
   }
 
   if (link.kind === 'external' && isSafeExternalHref(href)) {
@@ -107,14 +111,6 @@ interface StructuredBlockIdentity {
   value?: unknown
 }
 
-function getBlockHeading(block: StructuredBlockIdentity): string | undefined {
-  if (!block.value || typeof block.value !== 'object' || !('heading' in block.value)) {
-    return undefined
-  }
-
-  return typeof block.value.heading === 'string' ? block.value.heading.trim() : undefined
-}
-
 const structuredBlockAnchors: Record<string, string> = {
   process_steps: 'vendor-process',
   case_study: 'case-studies'
@@ -123,20 +119,15 @@ const structuredBlockAnchors: Record<string, string> = {
 export function getStructuredBlockAnchor(
   block: StructuredBlockIdentity,
   blocks: StructuredBlockIdentity[],
-  reservedAnchors: string[] = []
+  reservedAnchors: string[] = [],
+  pageSlug = ''
 ): string | undefined {
-  if (
-    block.type === 'card_grid'
-    && getBlockHeading(block) === '驗證機構與合規名單'
-  ) {
+  if (block.type === 'card_grid' && pageSlug === 'certification') {
     if (reservedAnchors.includes('certified-list')) {
       return undefined
     }
 
-    const firstCertifiedList = blocks.find(candidate =>
-      candidate.type === 'card_grid'
-      && getBlockHeading(candidate) === '驗證機構與合規名單'
-    )
+    const firstCertifiedList = blocks.find(candidate => candidate.type === 'card_grid')
     return firstCertifiedList?.id === block.id ? 'certified-list' : undefined
   }
 

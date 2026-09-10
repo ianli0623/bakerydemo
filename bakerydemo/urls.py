@@ -14,6 +14,7 @@ from .api import api_router
 from .base.public_api import public_site_settings
 
 urlpatterns = [
+    path("account/security/", include("bakerydemo.account_security.urls")),
     path("django-admin/", admin.site.urls),
     path("admin/", include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),

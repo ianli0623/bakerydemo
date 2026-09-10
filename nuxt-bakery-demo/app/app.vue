@@ -1,58 +1,79 @@
 <script setup lang="ts">
-import type { BakerySiteSettings } from '#shared/types/bakery'
+import type { BakerySiteSettings } from '#shared/types/bakery';
+import { getLanguageLinkLang } from '~/utils/accessibility';
 import {
   getContactLinks,
   getFooterLogoPresentation,
+  getNavigationItemLabel,
   isNavigationItemActive,
-  reduceNavigationOpen
-} from '~/utils/site-presentation'
+  reduceNavigationOpen,
+} from '~/utils/site-presentation';
 
-const route = useRoute()
+const route = useRoute();
+const { locale, t } = useI18n();
+const localePath = useLocalePath();
+const switchLocalePath = useSwitchLocalePath();
+const localeQuery = computed(() => ({ locale: locale.value }));
 const { data: settings, error: settingsError } =
-  await useFetch<BakerySiteSettings>('/api/bakery/site-settings')
+  await useFetch<BakerySiteSettings>('/api/bakery/site-settings', {
+    query: localeQuery,
+  });
 
-const navigationOpen = ref(false)
+useHead(() => ({
+  htmlAttrs: { lang: locale.value === 'en' ? 'en' : 'zh-Hant' },
+}));
+
+const navigationOpen = ref(false);
 const toggleNavigation = () => {
-  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, 'toggle')
-}
+  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, 'toggle');
+};
 const closeNavigation = (event: 'escape' | 'route') => {
-  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, event)
-}
+  navigationOpen.value = reduceNavigationOpen(navigationOpen.value, event);
+};
 
-watch(() => route.path, () => closeNavigation('route'))
+watch(
+  () => route.path,
+  () => closeNavigation('route'),
+);
 
 const onWindowKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    closeNavigation('escape')
+    closeNavigation('escape');
   }
-}
+};
 
-onMounted(() => window.addEventListener('keydown', onWindowKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKeydown))
+onMounted(() => window.addEventListener('keydown', onWindowKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKeydown));
 
 const contactLinks = computed(() =>
-  settings.value ? getContactLinks(settings.value.contact) : null
-)
+  settings.value ? getContactLinks(settings.value.contact) : null,
+);
 const footerLogo = computed(() =>
-  getFooterLogoPresentation(settings.value?.footer_logo ?? null)
-)
+  getFooterLogoPresentation(settings.value?.footer_logo ?? null),
+);
 </script>
 
 <template>
   <div class="site-shell">
-    <a class="skip-link" href="#main-content">跳到主要內容</a>
+    <a class="skip-link" href="#main-content">
+      {{ t('accessibility.skipToContent') }}
+    </a>
+
+    <AccessibilityToolbar />
 
     <header class="site-header">
       <div class="site-header-inner">
         <NuxtLink
           class="brand"
-          to="/"
-          :aria-label="`${settings?.site_name || 'SEMI E187'}首頁`"
+          :to="localePath('/')"
+          :aria-label="`${settings?.site_name || 'SEMI E187'} — ${t('navigation.home')}`"
           @click="closeNavigation('route')"
         >
           <span class="brand-copy">
-            <strong>SEMI E187</strong>
-            <small>認驗證制度</small>
+            <strong>{{ settings?.title_suffix || 'SEMI E187' }}</strong>
+            <small v-if="settings?.brand_label">{{
+              settings.brand_label
+            }}</small>
           </span>
         </NuxtLink>
 
@@ -63,7 +84,13 @@ const footerLogo = computed(() =>
           :aria-expanded="navigationOpen"
           @click="toggleNavigation"
         >
-          <span class="nav-toggle__label">選單</span>
+          <span class="nav-toggle__label">
+            {{
+              navigationOpen
+                ? t('navigation.closeMenu')
+                : t('navigation.openMenu')
+            }}
+          </span>
           <span class="nav-toggle__icon" aria-hidden="true">
             <i />
             <i />
@@ -75,25 +102,52 @@ const footerLogo = computed(() =>
           id="primary-navigation"
           class="site-nav"
           :class="{ 'site-nav--open': navigationOpen }"
-          aria-label="主要導覽"
+          :aria-label="t('navigation.label')"
         >
           <NuxtLink
             v-for="item in settings?.navigation || []"
             :key="item.id"
             class="nav-link"
-            :to="item.path"
+            :to="localePath(item.slug ? `/${item.slug}/` : '/')"
             :aria-current="
               isNavigationItemActive(item.path, route.path) ? 'page' : undefined
             "
             @click="closeNavigation('route')"
           >
-            {{ item.title }}
+            {{ getNavigationItemLabel(item, t('navigation.home')) }}
           </NuxtLink>
-          <a class="nav-contact" href="#contact" @click="closeNavigation('route')">
-            聯絡我們
+          <a
+            class="nav-contact"
+            href="#contact"
+            @click="closeNavigation('route')"
+          >
+            {{ t('navigation.contact') }}
           </a>
+          <div
+            class="mobile-language-switch"
+            role="group"
+            :aria-label="t('mobile.language')"
+          >
+            <span>{{ t('language.label') }}</span>
+            <NuxtLink
+              :to="switchLocalePath('zh-tw')"
+              :lang="getLanguageLinkLang(locale, 'zh-tw')"
+              :aria-current="locale === 'zh-tw' ? 'page' : undefined"
+              @click="closeNavigation('route')"
+            >
+              {{ t('language.traditionalChinese') }}
+            </NuxtLink>
+            <NuxtLink
+              :to="switchLocalePath('en')"
+              :lang="getLanguageLinkLang(locale, 'en')"
+              :aria-current="locale === 'en' ? 'page' : undefined"
+              @click="closeNavigation('route')"
+            >
+              {{ t('language.english') }}
+            </NuxtLink>
+          </div>
           <span v-if="settingsError" class="nav-status" role="status">
-            選單暫時無法載入
+            {{ t('status.navigationError') }}
           </span>
         </nav>
       </div>
@@ -105,12 +159,12 @@ const footerLogo = computed(() =>
       <div class="footer-accent" aria-hidden="true" />
       <div class="footer-inner">
         <div class="footer-introduction">
-          <p class="footer-kicker">CONTACT US</p>
+          <p class="footer-kicker">{{ t('navigation.contact') }}</p>
           <h2 id="contact-heading">
-            {{ settings?.contact.heading || '半導體智慧製造資安合規諮詢' }}
+            {{ settings?.contact.heading || t('contact.headingFallback') }}
           </h2>
-          <p>
-            配合數位發展部推動產業資安跨域聯防，協助本土半導體設備廠與資安供應鏈進行生態鏈結。若您對 SEMI E187 認驗證程序有任何合規輔導或技術細節疑問，歡迎與專案推動辦公室聯絡。
+          <p v-if="settings?.footer_introduction">
+            {{ settings.footer_introduction }}
           </p>
         </div>
 
@@ -121,15 +175,19 @@ const footerLogo = computed(() =>
             v-if="contactLinks.phone && settings.contact.phone"
             :href="contactLinks.phone"
           >
-            <span>電話</span>{{ settings.contact.phone }}
+            <span>{{ t('contact.phone') }}</span
+            >{{ settings.contact.phone }}
           </a>
           <a
             v-if="contactLinks.email && settings.contact.email"
             :href="contactLinks.email"
           >
-            <span>信箱</span>{{ settings.contact.email }}
+            <span>{{ t('contact.email') }}</span
+            >{{ settings.contact.email }}
           </a>
-          <p v-if="!contactLinks.phone && !contactLinks.email">聯絡資訊即將提供</p>
+          <p v-if="!contactLinks.phone && !contactLinks.email">
+            {{ t('status.unavailable') }}
+          </p>
         </address>
 
         <div class="footer-bottom">
@@ -141,22 +199,31 @@ const footerLogo = computed(() =>
               :height="footerLogo.height"
               :alt="footerLogo.alt"
               loading="lazy"
-            >
+            />
             <strong v-else>{{ settings?.site_name || 'SEMI E187' }}</strong>
           </div>
           <p class="footer-copyright">
-            {{ settings?.organisation_text || 'SEMI E187 Semiconductor Equipment Cybersecurity Certification Scheme.' }}
+            {{
+              settings?.organisation_text ||
+              settings?.title_suffix ||
+              'SEMI E187'
+            }}
           </p>
-          <nav v-if="settings?.navigation.length" aria-label="頁尾導覽">
+          <nav
+            v-if="settings?.navigation.length"
+            :aria-label="t('navigation.footer')"
+          >
             <NuxtLink
               v-for="item in settings.navigation"
               :key="item.id"
-              :to="item.path"
+              :to="localePath(item.slug ? `/${item.slug}/` : '/')"
               :aria-current="
-                isNavigationItemActive(item.path, route.path) ? 'page' : undefined
+                isNavigationItemActive(item.path, route.path)
+                  ? 'page'
+                  : undefined
               "
             >
-              {{ item.title }}
+              {{ getNavigationItemLabel(item, t('navigation.home')) }}
             </NuxtLink>
           </nav>
         </div>
