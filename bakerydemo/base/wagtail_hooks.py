@@ -3,9 +3,14 @@ from wagtail import hooks
 from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
 from wagtail.admin.views.account import AvatarSettingsPanel, ThemeSettingsPanel
+from wagtail.admin.views.pages.history import PageHistoryView
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
+from bakerydemo.base.admin_history import (
+    get_collapsed_page_history_columns,
+    get_collapsed_page_history_queryset,
+)
 from bakerydemo.base.filters import RevisionFilterSetMixin
 from bakerydemo.base.forms import (
     ResettableAvatarPreferencesForm,
@@ -17,6 +22,9 @@ from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 AvatarSettingsPanel.form_class = ResettableAvatarPreferencesForm
 # Keep the remaining theme controls while hiding Wagtail-specific shortcuts.
 ThemeSettingsPanel.form_class = SimplifiedThemePreferencesForm
+# Group metadata-only autosave copies with the matching page revision in history.
+PageHistoryView.get_queryset = get_collapsed_page_history_queryset
+PageHistoryView.columns = property(get_collapsed_page_history_columns)
 
 HIDDEN_MAIN_MENU_ITEMS = {"help"}
 HIDDEN_REPORT_MENU_ITEMS = {

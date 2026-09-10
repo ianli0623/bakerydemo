@@ -230,6 +230,52 @@ class AdminNavigationTests(TestCase):
             reverse("wagtailadmin_pages:history", args=[self.page.id]),
         )
 
+    def test_page_history_merges_equivalent_autosave_and_publish_entries(self):
+        self.page.introduction = "Updated introduction"
+        first_autosave = self.page.save_revision(user=self.user, log_action=True)
+        second_autosave = self.page.save_revision(user=self.user, log_action=True)
+        published_revision = self.page.save_revision(user=self.user, log_action=True)
+        published_revision.publish(user=self.user)
+
+        response = self.client.get(
+            reverse("wagtailadmin_pages:history", args=[self.page.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        displayed_entries = list(response.context["object_list"])
+        displayed_revision_ids = {
+            entry.revision_id
+            for entry in displayed_entries
+            if entry.revision_id
+            in {first_autosave.id, second_autosave.id, published_revision.id}
+        }
+        self.assertEqual(displayed_revision_ids, {published_revision.id})
+
+        published_entry = next(
+            entry
+            for entry in displayed_entries
+            if entry.revision_id == published_revision.id
+        )
+        action_column = response.context["view"].columns[0]
+        self.assertTrue(action_column.get_actions(published_entry, response.context))
+
+    def test_page_history_keeps_genuinely_different_drafts(self):
+        self.page.introduction = "First update"
+        first_revision = self.page.save_revision(user=self.user, log_action=True)
+        self.page.introduction = "Second update"
+        second_revision = self.page.save_revision(user=self.user, log_action=True)
+
+        response = self.client.get(
+            reverse("wagtailadmin_pages:history", args=[self.page.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        displayed_revision_ids = {
+            entry.revision_id for entry in response.context["object_list"]
+        }
+        self.assertIn(first_revision.id, displayed_revision_ids)
+        self.assertIn(second_revision.id, displayed_revision_ids)
+
     def test_admin_home_renders_semi_e187_branding(self):
         response = self.client.get(reverse("wagtailadmin_home"))
 
