@@ -129,3 +129,43 @@ class AdminAccountSettingsTests(TestCase):
         self.assertRedirects(response, reverse("wagtailadmin_account"))
         self.profile.refresh_from_db()
         self.assertTrue(self.profile.keyboard_shortcuts)
+
+    def test_notification_settings_tab_is_hidden(self):
+        response = self.client.get(reverse("wagtailadmin_account"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="tab-label-notifications"')
+        self.assertNotContains(response, 'id="tab-notifications"')
+        for field_name in (
+            "submitted_notifications",
+            "approved_notifications",
+            "rejected_notifications",
+            "updated_comments_notifications",
+        ):
+            with self.subTest(field_name=field_name):
+                self.assertNotContains(
+                    response,
+                    f'name="notifications-{field_name}"',
+                )
+
+    def test_saving_account_preserves_hidden_notification_settings(self):
+        notification_fields = (
+            "submitted_notifications",
+            "approved_notifications",
+            "rejected_notifications",
+            "updated_comments_notifications",
+        )
+        for field_name in notification_fields:
+            setattr(self.profile, field_name, True)
+        self.profile.save(update_fields=notification_fields)
+
+        response = self.client.post(
+            reverse("wagtailadmin_account"),
+            self._account_form_data(),
+        )
+
+        self.assertRedirects(response, reverse("wagtailadmin_account"))
+        self.profile.refresh_from_db()
+        for field_name in notification_fields:
+            with self.subTest(field_name=field_name):
+                self.assertTrue(getattr(self.profile, field_name))

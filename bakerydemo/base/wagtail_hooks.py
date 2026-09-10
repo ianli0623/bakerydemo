@@ -2,7 +2,11 @@ from django.utils.safestring import mark_safe
 from wagtail import hooks
 from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
-from wagtail.admin.views.account import AvatarSettingsPanel, ThemeSettingsPanel
+from wagtail.admin.views.account import (
+    AvatarSettingsPanel,
+    NotificationsSettingsPanel,
+    ThemeSettingsPanel,
+)
 from wagtail.admin.views.pages.history import PageHistoryView
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
@@ -13,6 +17,7 @@ from bakerydemo.base.admin_history import (
 )
 from bakerydemo.base.filters import RevisionFilterSetMixin
 from bakerydemo.base.forms import (
+    HiddenNotificationPreferencesForm,
     ResettableAvatarPreferencesForm,
     SimplifiedThemePreferencesForm,
 )
@@ -22,6 +27,8 @@ from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 AvatarSettingsPanel.form_class = ResettableAvatarPreferencesForm
 # Keep the remaining theme controls while hiding Wagtail-specific shortcuts.
 ThemeSettingsPanel.form_class = SimplifiedThemePreferencesForm
+# An empty notifications form makes Wagtail omit the panel and its tab.
+NotificationsSettingsPanel.form_class = HiddenNotificationPreferencesForm
 # Group metadata-only autosave copies with the matching page revision in history.
 PageHistoryView.get_queryset = get_collapsed_page_history_queryset
 PageHistoryView.columns = property(get_collapsed_page_history_columns)
