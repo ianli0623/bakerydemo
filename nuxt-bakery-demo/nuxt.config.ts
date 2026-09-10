@@ -3,18 +3,22 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   modules: ['@nuxtjs/i18n'],
   devServer: { port: 3100 },
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   runtimeConfig: {
     bakeryBaseUrl: '',
   },
   i18n: {
-    strategy: 'prefix_except_default',
-    defaultLocale: 'zh-hant',
+    strategy: 'prefix',
+    defaultLocale: 'en',
+    rootRedirect: {
+      path: '/en/',
+      statusCode: 301,
+    },
     detectBrowserLanguage: false,
     langDir: 'locales',
     locales: [
       {
-        code: 'zh-hant',
+        code: 'zh-tw',
         language: 'zh-Hant',
         name: '繁體中文',
         file: 'zh-hant.json',

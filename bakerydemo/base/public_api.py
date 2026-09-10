@@ -16,7 +16,7 @@ from .models import LocalizedSiteContent, SiteSettings
 
 
 def localized_path(locale_code: str, slug: str = "") -> str:
-    prefix = "/en" if locale_code == "en" else ""
+    prefix = "/en" if locale_code == "en" else "/zh-tw"
     return f"{prefix}/{slug}/" if slug else f"{prefix}/"
 
 

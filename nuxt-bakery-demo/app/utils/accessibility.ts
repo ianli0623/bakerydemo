@@ -1,7 +1,13 @@
 export type FontScale = 'small' | 'default' | 'large'
 export type FontScaleAction = 'decrease' | 'reset' | 'increase'
+export type PublicLocale = 'zh-tw' | 'en'
 
 export const FONT_SCALE_STORAGE_KEY = 'semi-e187-font-scale'
+
+const localeLanguages: Record<PublicLocale, 'zh-Hant' | 'en'> = {
+  'zh-tw': 'zh-Hant',
+  en: 'en'
+}
 
 interface ReadableStorage {
   getItem(key: string): string | null
@@ -15,6 +21,15 @@ const fontScaleOrder: FontScale[] = ['small', 'default', 'large']
 
 function isFontScale(value: unknown): value is FontScale {
   return fontScaleOrder.includes(value as FontScale)
+}
+
+export function getLanguageLinkLang(
+  currentLocale: string,
+  targetLocale: PublicLocale
+): 'zh-Hant' | 'en' | undefined {
+  return currentLocale === targetLocale
+    ? undefined
+    : localeLanguages[targetLocale]
 }
 
 export function reduceFontScale(

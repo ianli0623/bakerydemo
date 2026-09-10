@@ -14,7 +14,7 @@ function makeSiteSettings(
   return {
     locale: 'zh-hant',
     home_page_id: 60,
-    home_path: '/',
+    home_path: '/zh-tw/',
     brand_label: '認驗證制度',
     title_suffix: 'SEMI E187',
     site_name: 'SEMI E187',
@@ -38,8 +38,8 @@ function makeSiteSettings(
 test('parseBakerySiteSettings accepts the exact public settings contract', () => {
   const settings = makeSiteSettings({
     navigation: [
-      { id: 60, title: '首頁', slug: '', path: '/' },
-      { id: 91, title: '認識標準', slug: 'about', path: '/about/' }
+      { id: 60, title: '首頁', slug: '', path: '/zh-tw/' },
+      { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' }
     ]
   })
 
@@ -74,8 +74,8 @@ test('settings validation rejects malformed nested values and routes', () => {
 test('toNavigationItems uses only configured settings order and returns a copy', () => {
   const settings = makeSiteSettings({
     navigation: [
-      { id: 60, title: '首頁', slug: '', path: '/' },
-      { id: 91, title: '認識標準', slug: 'about', path: '/about/' }
+      { id: 60, title: '首頁', slug: '', path: '/zh-tw/' },
+      { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' }
     ]
   })
 
@@ -83,8 +83,8 @@ test('toNavigationItems uses only configured settings order and returns a copy',
   navigation[0]!.title = 'Changed'
 
   assert.deepEqual(settings.navigation, [
-    { id: 60, title: '首頁', slug: '', path: '/' },
-    { id: 91, title: '認識標準', slug: 'about', path: '/about/' }
+    { id: 60, title: '首頁', slug: '', path: '/zh-tw/' },
+    { id: 91, title: '認識標準', slug: 'about', path: '/zh-tw/about/' }
   ])
   assert.equal(navigation[0]!.title, 'Changed')
 })

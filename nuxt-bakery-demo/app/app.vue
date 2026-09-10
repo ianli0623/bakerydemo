@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BakerySiteSettings } from '#shared/types/bakery';
+import { getLanguageLinkLang } from '~/utils/accessibility';
 import {
   getContactLinks,
   getFooterLogoPresentation,
@@ -129,16 +130,16 @@ const footerLogo = computed(() =>
           >
             <span>{{ t('language.label') }}</span>
             <NuxtLink
-              :to="switchLocalePath('zh-hant')"
-              lang="zh-Hant"
-              :aria-current="locale === 'zh-hant' ? 'page' : undefined"
+              :to="switchLocalePath('zh-tw')"
+              :lang="getLanguageLinkLang(locale, 'zh-tw')"
+              :aria-current="locale === 'zh-tw' ? 'page' : undefined"
               @click="closeNavigation('route')"
             >
               {{ t('language.traditionalChinese') }}
             </NuxtLink>
             <NuxtLink
               :to="switchLocalePath('en')"
-              lang="en"
+              :lang="getLanguageLinkLang(locale, 'en')"
               :aria-current="locale === 'en' ? 'page' : undefined"
               @click="closeNavigation('route')"
             >

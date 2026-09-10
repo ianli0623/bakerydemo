@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  getLanguageLinkLang,
   readStoredFontScale,
   reduceFontScale,
   type FontScale,
@@ -80,15 +81,15 @@ onMounted(() => {
         :aria-label="t('language.label')"
       >
         <NuxtLink
-          :to="switchLocalePath('zh-hant')"
-          lang="zh-Hant"
-          :aria-current="locale === 'zh-hant' ? 'page' : undefined"
+          :to="switchLocalePath('zh-tw')"
+          :lang="getLanguageLinkLang(locale, 'zh-tw')"
+          :aria-current="locale === 'zh-tw' ? 'page' : undefined"
         >
           {{ t('language.traditionalChinese') }}
         </NuxtLink>
         <NuxtLink
           :to="switchLocalePath('en')"
-          lang="en"
+          :lang="getLanguageLinkLang(locale, 'en')"
           :aria-current="locale === 'en' ? 'page' : undefined"
         >
           {{ t('language.english') }}

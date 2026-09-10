@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  getLanguageLinkLang,
   readStoredFontScale,
   reduceFontScale,
   writeStoredFontScale
@@ -31,4 +32,11 @@ test('invalid or unavailable stored values fall back without throwing', () => {
       throw new Error('blocked')
     }
   }, 'large'))
+})
+
+test('language links declare only a language different from the current page', () => {
+  assert.equal(getLanguageLinkLang('en', 'en'), undefined)
+  assert.equal(getLanguageLinkLang('en', 'zh-tw'), 'zh-Hant')
+  assert.equal(getLanguageLinkLang('zh-tw', 'zh-tw'), undefined)
+  assert.equal(getLanguageLinkLang('zh-tw', 'en'), 'en')
 })

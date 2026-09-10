@@ -180,7 +180,7 @@ test('enrichHomePage exposes a localized hero CTA path', () => {
 
   assert.equal(
     enrichHomePage(home, [], 'zh-hant').heroCtaPath,
-    '/certification/'
+    '/zh-tw/certification/'
   )
 })
 

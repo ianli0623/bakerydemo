@@ -13,7 +13,7 @@ test('localized SEO links expose a canonical URL and both language alternatives'
       alternatives: [
         {
           hreflang: 'zh-Hant',
-          href: 'http://localhost:3100/resources/'
+          href: 'http://localhost:3100/zh-tw/resources/'
         },
         {
           hreflang: 'en',
@@ -21,7 +21,7 @@ test('localized SEO links expose a canonical URL and both language alternatives'
         },
         {
           hreflang: 'x-default',
-          href: 'http://localhost:3100/resources/'
+          href: 'http://localhost:3100/en/resources/'
         }
       ]
     }

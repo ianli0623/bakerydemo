@@ -29,7 +29,7 @@ export function getLocalizedSeoLinks(
     alternatives: [
       { hreflang: 'zh-Hant', href: chineseUrl },
       { hreflang: 'en', href: englishUrl },
-      { hreflang: 'x-default', href: chineseUrl }
+      { hreflang: 'x-default', href: englishUrl }
     ]
   }
 }
