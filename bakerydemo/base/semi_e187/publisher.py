@@ -253,8 +253,6 @@ def apply_site_settings(
         )
     settings = SiteSettings.for_site(sites[0])
     source = plan.settings
-    settings.contact_phone = source.contact_phone
-    settings.contact_email = source.contact_email
     settings.footer_logo = images.get(source.footer_logo)
     settings.primary_navigation = [
         ("page", pages[slug]) for slug in source.navigation_slugs
@@ -275,6 +273,8 @@ def apply_site_settings(
     localized_content.contact_heading = source.contact_heading
     localized_content.contact_name = source.contact_name
     localized_content.contact_context = source.contact_context
+    localized_content.contact_phone = source.contact_phone
+    localized_content.contact_email = source.contact_email
     localized_content.footer_introduction = source.footer_introduction
     localized_content.organisation_text = source.organisation_text
     localized_content.save_revision().publish()

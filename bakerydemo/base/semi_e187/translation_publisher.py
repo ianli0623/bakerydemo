@@ -25,6 +25,8 @@ LOCALIZED_CONTENT_FIELDS = (
     "contact_heading",
     "contact_name",
     "contact_context",
+    "contact_phone",
+    "contact_email",
     "footer_introduction",
     "organisation_text",
 )

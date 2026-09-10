@@ -279,8 +279,6 @@ class ImportSemiE187DryRunTests(TestCase):
         self.assertEqual(self.home.featured_section_1_title, "")
 
         settings = SiteSettings.objects.get(site=self.site)
-        self.assertEqual(settings.contact_phone, "02-23116228 #202")
-        self.assertEqual(settings.contact_email, "MaxYCLee@itri.org.tw")
         self.assertEqual(
             [block.value.pk for block in settings.primary_navigation],
             [self.home.pk, *[page.pk for page in imported]],
@@ -293,6 +291,8 @@ class ImportSemiE187DryRunTests(TestCase):
         self.assertEqual(localized_content.title_suffix, "SEMI E187")
         self.assertEqual(localized_content.brand_label, "認驗證制度")
         self.assertEqual(localized_content.contact_name, "李先生")
+        self.assertEqual(localized_content.contact_phone, "02-23116228 #202")
+        self.assertEqual(localized_content.contact_email, "MaxYCLee@itri.org.tw")
         self.assertEqual(
             localized_content.footer_introduction,
             "若有合規輔導或技術疑問，歡迎聯絡推動辦公室。",

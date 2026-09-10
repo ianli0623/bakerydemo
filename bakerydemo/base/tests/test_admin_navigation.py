@@ -111,7 +111,7 @@ class AdminNavigationTests(TestCase):
 
         collect_labels(sidebar)
 
-        self.assertIn("SEMI E187 導覽與聯絡設定", labels)
+        self.assertIn("SEMI E187 導覽設定", labels)
         self.assertNotIn("Site settings", labels)
 
     def test_aging_pages_label_is_localized_for_admin_language(self):

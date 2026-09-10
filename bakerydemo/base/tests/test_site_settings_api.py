@@ -99,8 +99,6 @@ class SiteSettingsApiTests(TestCase):
         SiteSettings.objects.filter(site=cls.site).delete()
         cls.settings = SiteSettings.objects.create(
             site=cls.site,
-            contact_phone="02-23116228 #202",
-            contact_email="MaxYCLee@itri.org.tw",
             primary_navigation=[
                 ("page", cls.home),
                 ("page", cls.resources),
@@ -117,6 +115,8 @@ class SiteSettingsApiTests(TestCase):
             contact_heading="半導體智慧製造資安合規諮詢",
             contact_name="李先生",
             contact_context="認驗證制度與流程",
+            contact_phone="02-23116228 #202",
+            contact_email="MaxYCLee@itri.org.tw",
             footer_introduction="歡迎聯絡推動辦公室。",
             organisation_text=(
                 "© SEMI E187 Semiconductor Equipment Cybersecurity "
@@ -134,6 +134,8 @@ class SiteSettingsApiTests(TestCase):
             contact_heading="Semiconductor Cybersecurity Compliance Consultation",
             contact_name="Mr. Lee",
             contact_context="Certification scheme and process",
+            contact_phone="02-23116228 #202",
+            contact_email="MaxYCLee@itri.org.tw",
             footer_introduction="Contact the program office for assistance.",
             organisation_text="© SEMI E187. Adapted from the official ACW guide.",
         )
@@ -204,7 +206,10 @@ class SiteSettingsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(SiteSettings.objects.filter(site=self.site).count(), 0)
         self.assertEqual(response.json()["navigation"], [])
-        self.assertEqual(response.json()["contact"]["phone_href"], "")
+        self.assertEqual(
+            response.json()["contact"]["phone_href"],
+            "tel:+886223116228,202",
+        )
 
     def test_english_settings_return_english_navigation_paths(self):
         response = self.get_settings("en")
@@ -241,6 +246,24 @@ class SiteSettingsApiTests(TestCase):
                     "path": "/en/about/",
                 },
             ],
+        )
+
+    def test_each_locale_uses_its_own_contact_details(self):
+        self.en_content.contact_phone = "+1 408 555 0187"
+        self.en_content.contact_email = "english@example.com"
+        self.en_content.save()
+
+        response = self.get_settings("en")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["contact"]["phone"], "+1 408 555 0187")
+        self.assertEqual(
+            response.json()["contact"]["phone_href"],
+            "tel:+14085550187",
+        )
+        self.assertEqual(
+            response.json()["contact"]["email"],
+            "english@example.com",
         )
 
     def test_missing_locale_defaults_to_traditional_chinese(self):
@@ -284,9 +307,9 @@ class SiteSettingsApiTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_invalid_editor_contact_values_do_not_break_the_endpoint(self):
-        self.settings.contact_phone = "請來信洽詢"
-        self.settings.contact_email = "not-an-email"
-        self.settings.save()
+        self.zh_content.contact_phone = "請來信洽詢"
+        self.zh_content.contact_email = "not-an-email"
+        self.zh_content.save()
 
         response = self.get_settings()
 

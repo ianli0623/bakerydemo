@@ -44,11 +44,11 @@ def serialize_public_settings(
     navigation: list[dict[str, object]],
 ) -> dict[str, object]:
     try:
-        phone_href = phone_to_href(settings.contact_phone)
+        phone_href = phone_to_href(localized_content.contact_phone)
     except ValueError:
         phone_href = ""
     try:
-        email = validate_contact_email(settings.contact_email)
+        email = validate_contact_email(localized_content.contact_email)
     except ValueError:
         email = ""
     footer_logo = (
@@ -68,7 +68,7 @@ def serialize_public_settings(
             "heading": localized_content.contact_heading,
             "name": localized_content.contact_name,
             "context": localized_content.contact_context,
-            "phone": settings.contact_phone,
+            "phone": localized_content.contact_phone,
             "phone_href": phone_href,
             "email": email,
         },

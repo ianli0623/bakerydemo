@@ -668,11 +668,9 @@ class GenericSettings(ClusterableModel, PreviewableMixin, BaseGenericSetting):
 @register_setting(icon="site")
 class SiteSettings(BaseSiteSetting):
     class Meta:
-        verbose_name = "SEMI E187 導覽與聯絡設定"
-        verbose_name_plural = "SEMI E187 導覽與聯絡設定"
+        verbose_name = "SEMI E187 導覽設定"
+        verbose_name_plural = "SEMI E187 導覽設定"
 
-    contact_phone = models.CharField(max_length=64, blank=True, default="")
-    contact_email = models.EmailField(blank=True, default="")
     footer_logo = models.ForeignKey(
         "wagtailimages.Image",
         null=True,
@@ -689,13 +687,6 @@ class SiteSettings(BaseSiteSetting):
     panels = [
         FieldPanel("footer_logo"),
         FieldPanel("primary_navigation"),
-        MultiFieldPanel(
-            [
-                FieldPanel("contact_phone"),
-                FieldPanel("contact_email"),
-            ],
-            heading="Shared contact details",
-        ),
     ]
 
 
@@ -714,6 +705,17 @@ class LocalizedSiteContent(
     contact_heading = models.CharField(max_length=255, blank=True, default="")
     contact_name = models.CharField(max_length=100, blank=True, default="")
     contact_context = models.CharField(max_length=255, blank=True, default="")
+    contact_phone = models.CharField(
+        verbose_name="聯絡電話",
+        max_length=64,
+        blank=True,
+        default="",
+    )
+    contact_email = models.EmailField(
+        verbose_name="聯絡信箱",
+        blank=True,
+        default="",
+    )
     footer_introduction = models.TextField(blank=True, default="")
     organisation_text = models.TextField(blank=True, default="")
 
@@ -741,6 +743,8 @@ class LocalizedSiteContent(
                 FieldPanel("contact_heading"),
                 FieldPanel("contact_name"),
                 FieldPanel("contact_context"),
+                FieldPanel("contact_phone"),
+                FieldPanel("contact_email"),
                 FieldPanel("footer_introduction"),
             ],
             heading="Contact content",
