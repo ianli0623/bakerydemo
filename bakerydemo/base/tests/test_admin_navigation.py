@@ -83,6 +83,7 @@ class AdminNavigationTests(TestCase):
             "locales",
             "locked-pages",
             "page-types-usage",
+            "promoted-search-results",
             "redirects",
             "search-terms",
             "sites",
@@ -93,6 +94,25 @@ class AdminNavigationTests(TestCase):
         for menu_name in hidden_menu_names:
             with self.subTest(menu_name=menu_name):
                 self.assertNotIn(menu_name, menu_names)
+
+    def test_site_settings_have_an_identifiable_chinese_label(self):
+        sidebar = self._get_sidebar()
+        labels = []
+
+        def collect_labels(value):
+            if isinstance(value, dict):
+                if "label" in value:
+                    labels.append(value["label"])
+                for child in value.values():
+                    collect_labels(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect_labels(child)
+
+        collect_labels(sidebar)
+
+        self.assertIn("SEMI E187 導覽與聯絡設定", labels)
+        self.assertNotIn("Site settings", labels)
 
     def test_aging_pages_label_is_localized_for_admin_language(self):
         sidebar = self._get_sidebar()

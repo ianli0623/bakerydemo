@@ -29,6 +29,7 @@ HIDDEN_REPORT_MENU_ITEMS = {
 HIDDEN_SETTINGS_MENU_ITEMS = {
     "generic-settings",
     "locales",
+    "promoted-search-results",
     "redirects",
     "sites",
     "styleguide",

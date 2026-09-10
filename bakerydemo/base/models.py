@@ -667,6 +667,10 @@ class GenericSettings(ClusterableModel, PreviewableMixin, BaseGenericSetting):
 
 @register_setting(icon="site")
 class SiteSettings(BaseSiteSetting):
+    class Meta:
+        verbose_name = "SEMI E187 導覽與聯絡設定"
+        verbose_name_plural = "SEMI E187 導覽與聯絡設定"
+
     contact_phone = models.CharField(max_length=64, blank=True, default="")
     contact_email = models.EmailField(blank=True, default="")
     footer_logo = models.ForeignKey(
