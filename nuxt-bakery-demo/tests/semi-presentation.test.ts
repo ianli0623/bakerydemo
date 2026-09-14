@@ -191,7 +191,7 @@ function standardPage(
   };
 }
 
-test('about and certification become reference-style content sections without duplicated lead copy', () => {
+test('about and certification use the legacy rich-text lead when introduction is empty', () => {
   const getStandardPagePresentation = Reflect.get(
     sitePresentation,
     'getStandardPagePresentation',
@@ -228,7 +228,7 @@ test('about and certification become reference-style content sections without du
     const page = standardPage(
       scenario.slug,
       'Original page title',
-      'Original introduction',
+      '',
       [lead, content],
     );
     page.section_kicker = scenario.kicker;
@@ -249,6 +249,40 @@ test('about and certification become reference-style content sections without du
       },
     ]);
   }
+});
+
+test('an edited introduction takes precedence over the legacy lead paragraph', () => {
+  const getStandardPagePresentation = Reflect.get(
+    sitePresentation,
+    'getStandardPagePresentation',
+  );
+  assert.equal(typeof getStandardPagePresentation, 'function');
+
+  const legacyLead = {
+    id: 'about-legacy-lead',
+    type: 'paragraph_block',
+    value: '<p>舊的頁面介紹</p>',
+  } satisfies BakeryStreamBlock;
+  const content = {
+    id: 'about-content',
+    type: 'heading_block',
+    value: { heading_text: '後續內容', size: 'h2' },
+  } satisfies BakeryStreamBlock;
+  const page = standardPage(
+    'about',
+    '認識標準',
+    '111111新的頁面介紹11111',
+    [legacyLead, content],
+  );
+
+  const presentation = getStandardPagePresentation('about', page);
+
+  assert.equal(
+    presentation.sections[0]?.introduction,
+    '111111新的頁面介紹11111',
+  );
+  assert.equal(presentation.sections[0]?.introductionHtml, '');
+  assert.deepEqual(presentation.sections[0]?.body, [content]);
 });
 
 test('resources becomes one muted reference-style section while preserving its cards', () => {

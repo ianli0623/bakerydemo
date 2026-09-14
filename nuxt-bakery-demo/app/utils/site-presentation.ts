@@ -96,12 +96,14 @@ export function getStandardPagePresentation(
     (slug === 'about' || slug === 'certification') &&
     firstBlock?.type === 'paragraph_block'
   ) {
+    const introduction = page.introduction.trim();
+
     return {
       sections: [
         {
           ...section,
-          introduction: '',
-          introductionHtml: firstBlock.value,
+          introduction,
+          introductionHtml: introduction ? '' : firstBlock.value,
           body: page.body.slice(1),
         },
       ],

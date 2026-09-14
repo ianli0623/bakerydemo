@@ -2,13 +2,39 @@ import json
 import re
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.template.loader import render_to_string
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+from django.utils.translation import gettext, override
+from wagtail.admin import messages as wagtail_messages
 from wagtail.models import Site
 from wagtail.users.models import UserProfile
 
 from bakerydemo.account_security.services import sync_password_change
 from bakerydemo.base.models import StandardPage
+
+
+class AdminMessageTemplateTests(SimpleTestCase):
+    def test_publish_message_hides_view_live_but_keeps_success_and_edit(self):
+        for language in ("zh-hant", "en"):
+            with self.subTest(language=language), override(language):
+                html = render_to_string(
+                    "wagtailadmin/shared/messages.html",
+                    {
+                        "message": "Page published successfully.",
+                        "buttons": [
+                            wagtail_messages.button(
+                                "/view-live/", gettext("View live")
+                            ),
+                            wagtail_messages.button("/edit/", gettext("Edit")),
+                        ],
+                        "detail": "",
+                    },
+                )
+
+                self.assertIn("Page published successfully.", html)
+                self.assertNotIn("/view-live/", html)
+                self.assertIn("/edit/", html)
 
 
 class AdminNavigationTests(TestCase):
@@ -182,6 +208,20 @@ class AdminNavigationTests(TestCase):
                 r'#wagtail-sidebar form\[role="search"\]\s*'
                 r"\{\s*display:\s*none;\s*\}\s*</style>",
             )
+
+    def test_root_explorer_hides_site_configuration_help(self):
+        response = self.client.get(reverse("wagtailadmin_explore_root"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "The root level is where you can add new sites",
+        )
+        self.assertNotContains(
+            response,
+            "If you just want to add pages to an existing site",
+        )
+        self.assertContains(response, self.page.get_parent().title)
 
     def test_unused_page_editor_controls_are_hidden(self):
         response = self.client.get(

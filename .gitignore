@@ -18,6 +18,9 @@ node_modules
 venv
 .venv
 .worktrees/
+.codex-tmp/
+.vs/
+artifacts/
 __pycache__
 .vagrant/
 /.vagrant/
