@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from webauthn.helpers import bytes_to_base64url
 
+from bakerydemo.account_security.models import PasskeyCredential
 from bakerydemo.account_security.services import sync_password_change
 
 
@@ -48,6 +50,54 @@ class PasswordPolicyMiddlewareTests(TestCase):
         state.must_change_password = False
         state.password_changed_at = timezone.now() - timedelta(days=90)
         state.save()
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertRedirects(
+            response,
+            self.change_url,
+            fetch_redirect_response=False,
+        )
+
+    def test_passwordless_user_with_active_passkey_bypasses_password_expiry(self):
+        self.user.set_unusable_password()
+        self.user.save(update_fields=["password"])
+        PasskeyCredential.objects.create(
+            user=self.user,
+            credential_id=bytes_to_base64url(b"credential-id"),
+            credential_public_key=b"public-key",
+            user_handle=b"user-handle",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_passwordless_user_without_active_passkey_fails_closed(self):
+        self.user.set_unusable_password()
+        self.user.save(update_fields=["password"])
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertRedirects(
+            response,
+            self.change_url,
+            fetch_redirect_response=False,
+        )
+
+    def test_expired_password_is_not_bypassed_by_active_passkey(self):
+        state = self.user.account_security_state
+        state.must_change_password = False
+        state.password_changed_at = timezone.now() - timedelta(days=90)
+        state.save()
+        PasskeyCredential.objects.create(
+            user=self.user,
+            credential_id=bytes_to_base64url(b"credential-id"),
+            credential_public_key=b"public-key",
+            user_handle=b"user-handle",
+        )
 
         response = self.client.get(reverse("wagtailadmin_home"))
 

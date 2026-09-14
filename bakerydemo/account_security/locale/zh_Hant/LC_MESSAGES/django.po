@@ -123,3 +123,108 @@ msgstr "%(days)s 天"
 
 msgid "No active admin users have passwords expiring within 30 days."
 msgstr "目前沒有密碼將於 30 天內到期的有效後台使用者。"
+
+msgid "Authentication method"
+msgstr "登入方式"
+
+msgid "Windows Hello (passwordless)"
+msgstr "Windows Hello（無密碼）"
+
+msgid "Windows Hello enrolment"
+msgstr "Windows Hello 註冊"
+
+msgid "Windows Hello enrolment code"
+msgstr "Windows Hello 註冊碼"
+
+msgid "Copy this Windows Hello enrolment code now. It will not be shown again and expires in 15 minutes."
+msgstr "請立即複製這組 Windows Hello 註冊碼；離開此頁後將不再顯示，並於 15 分鐘後失效。"
+
+msgid "Copy code"
+msgstr "複製註冊碼"
+
+msgid "Code copied."
+msgstr "註冊碼已複製。"
+
+msgid "The user must open the Windows Hello enrolment page on the Windows computer they will use for administration."
+msgstr "使用者必須在日後用來管理網站的 Windows 電腦上開啟 Windows Hello 註冊頁。"
+
+msgid "The enrolment details are invalid or expired. Ask an administrator for a new code."
+msgstr "註冊資料不正確或已失效，請向管理者索取新的註冊碼。"
+
+msgid "The enrolment code is valid. Continue to register Windows Hello on this computer."
+msgstr "註冊碼有效，請繼續在這台電腦上註冊 Windows Hello。"
+
+msgid "Register Windows Hello"
+msgstr "註冊 Windows Hello"
+
+msgid "Validate enrolment code"
+msgstr "驗證註冊碼"
+
+msgid "This browser does not support Windows Hello."
+msgstr "此瀏覽器不支援 Windows Hello。"
+
+msgid "Waiting for Windows Hello…"
+msgstr "正在等候 Windows Hello 驗證…"
+
+msgid "Windows Hello was cancelled or timed out."
+msgstr "Windows Hello 已取消或等候逾時。"
+
+msgid "Windows Hello registration could not be completed. Please try again."
+msgstr "無法完成 Windows Hello 註冊，請再試一次。"
+
+msgid "Sign in with Windows Hello"
+msgstr "使用 Windows Hello 登入"
+
+msgid "Use Windows Hello on this computer to sign in without entering a username or password."
+msgstr "使用這台電腦的 Windows Hello 登入，不必輸入帳號或密碼。"
+
+msgid "Continue with Windows Hello"
+msgstr "繼續使用 Windows Hello"
+
+msgid "Sign in with a username and password instead"
+msgstr "改用帳號及密碼登入"
+
+msgid "Windows Hello sign-in could not be completed. Please try again."
+msgstr "無法完成 Windows Hello 登入，請再試一次。"
+
+msgid "Windows Hello management"
+msgstr "Windows Hello 管理"
+
+msgid "The Windows Hello credential was revoked."
+msgstr "Windows Hello 登入憑證已撤銷。"
+
+#, python-format
+msgid "Copy the enrolment code for %(username)s now. It expires in 15 minutes and will not be shown again."
+msgstr "請立即複製 %(username)s 的註冊碼；註冊碼將於 15 分鐘後失效，且不會再次顯示。"
+
+msgid "Manage registered Windows Hello credentials and issue one-time enrolment codes for admin users."
+msgstr "管理已註冊的 Windows Hello 憑證，並為後台使用者產生一次性註冊碼。"
+
+msgid "Active credentials"
+msgstr "有效憑證"
+
+msgid "Pending enrolment"
+msgstr "待完成註冊"
+
+msgid "Actions"
+msgstr "操作"
+
+#, python-format
+msgid "Last used %(used)s"
+msgstr "最後使用時間：%(used)s"
+
+msgid "Revoke"
+msgstr "撤銷"
+
+msgid "None"
+msgstr "無"
+
+#, python-format
+msgid "Expires %(expiry)s"
+msgstr "失效時間：%(expiry)s"
+
+msgid "Generate enrolment code"
+msgstr "產生註冊碼"
+
+msgid "No admin users were found."
+msgstr "找不到後台使用者。"

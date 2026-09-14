@@ -13,6 +13,10 @@
         data-options-url="{% url 'account_security:passkey_authentication_options' %}"
         data-verify-url="{% url 'account_security:passkey_authentication_verify' %}"
         data-success-url="{% url 'wagtailadmin_home' %}"
+        data-unsupported-message="{% translate 'This browser does not support Windows Hello.' %}"
+        data-waiting-message="{% translate 'Waiting for Windows Hello…' %}"
+        data-cancelled-message="{% translate 'Windows Hello was cancelled or timed out.' %}"
+        data-error-message="{% translate 'Windows Hello sign-in could not be completed. Please try again.' %}"
     >
         {% translate "Continue with Windows Hello" %}
     </button>

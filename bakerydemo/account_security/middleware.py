@@ -24,6 +24,13 @@ LEGACY_PASSWORD_CHANGE_URL_NAMES = {
 PASSWORD_EXPIRY_NOTICE_SESSION_KEY = "account_security_password_expiry_notice"
 
 
+def is_passkey_only_user(user):
+    return (
+        not user.has_usable_password()
+        and user.passkey_credentials.filter(revoked_at__isnull=True).exists()
+    )
+
+
 class PasswordPolicyMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -43,6 +50,9 @@ class PasswordPolicyMiddleware:
             ("/admin/", "/django-admin/"),
         )
         if not request.path_info.startswith(tuple(protected_prefixes)):
+            return self.get_response(request)
+
+        if is_passkey_only_user(user):
             return self.get_response(request)
 
         try:

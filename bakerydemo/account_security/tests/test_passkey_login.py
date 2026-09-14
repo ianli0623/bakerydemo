@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -24,12 +25,15 @@ PASSKEY_SETTINGS = {
     "ACCOUNT_SECURITY_WEBAUTHN_RP_ID": "localhost",
     "ACCOUNT_SECURITY_WEBAUTHN_ORIGIN": "http://localhost:8000",
     "ACCOUNT_SECURITY_WEBAUTHN_CHALLENGE_TTL_SECONDS": 300,
+    "ACCOUNT_SECURITY_PASSKEY_FAILURE_LIMIT": 5,
+    "ACCOUNT_SECURITY_PASSKEY_LOCKOUT_SECONDS": 900,
 }
 
 
 @override_settings(**PASSKEY_SETTINGS)
 class PasskeyAuthenticationServiceTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username="hello-user",
             is_staff=True,
@@ -121,6 +125,7 @@ class PasskeyAuthenticationServiceTests(TestCase):
 @override_settings(**PASSKEY_SETTINGS)
 class PasskeyLoginViewTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username="hello-user",
             is_staff=True,
@@ -164,13 +169,13 @@ class PasskeyLoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'name="username"')
         self.assertNotContains(response, 'name="password"')
-        self.assertContains(response, "Windows Hello")
+        self.assertContains(response, "使用 Windows Hello 登入")
 
     def test_password_login_page_links_to_windows_hello(self):
         response = self.client.get(reverse("wagtailadmin_login"))
 
         self.assertContains(response, self.login_url)
-        self.assertContains(response, "Windows Hello")
+        self.assertContains(response, "使用 Windows Hello 登入")
 
     def test_options_create_a_fresh_session_challenge(self):
         response = self._issue_challenge()
@@ -311,3 +316,74 @@ class PasskeyLoginViewTests(TestCase):
         self.assertEqual(event.reason, "invalid_authentication")
         self.assertNotIn("payload", event.reason)
         self.assertNotIn("_auth_user_id", self.client.session)
+
+    @patch("bakerydemo.account_security.passkeys.verify_authentication_response")
+    def test_fifth_failed_verification_is_rate_limited_for_fifteen_minutes(
+        self,
+        verify,
+    ):
+        verify.side_effect = InvalidAuthenticationResponse("invalid signature")
+        responses = []
+
+        for _ in range(5):
+            self._issue_challenge()
+            responses.append(
+                self.client.post(
+                    self.verify_url,
+                    data=json.dumps(self._payload()),
+                    content_type="application/json",
+                    REMOTE_ADDR="127.0.0.20",
+                )
+            )
+
+        self.assertEqual(
+            [response.status_code for response in responses[:4]], [403] * 4
+        )
+        self.assertEqual(responses[4].status_code, 429)
+        self.assertEqual(responses[4]["Retry-After"], "900")
+        self.assertTrue(
+            PasskeyAuditEvent.objects.filter(
+                event_type="login_rate_limited",
+                reason="failure_limit_reached",
+            ).exists()
+        )
+
+    @patch("bakerydemo.account_security.passkeys.verify_authentication_response")
+    def test_successful_verification_clears_previous_failures(self, verify):
+        verify.side_effect = InvalidAuthenticationResponse("invalid signature")
+        for _ in range(4):
+            self._issue_challenge()
+            response = self.client.post(
+                self.verify_url,
+                data=json.dumps(self._payload()),
+                content_type="application/json",
+                REMOTE_ADDR="127.0.0.21",
+            )
+            self.assertEqual(response.status_code, 403)
+
+        verify.side_effect = None
+        verify.return_value = SimpleNamespace(
+            new_sign_count=4,
+            credential_device_type=SimpleNamespace(value="single_device"),
+            credential_backed_up=False,
+        )
+        self._issue_challenge()
+        success = self.client.post(
+            self.verify_url,
+            data=json.dumps(self._payload()),
+            content_type="application/json",
+            REMOTE_ADDR="127.0.0.21",
+        )
+        self.assertEqual(success.status_code, 200)
+        self.client.logout()
+
+        verify.side_effect = InvalidAuthenticationResponse("invalid signature")
+        for _ in range(4):
+            self._issue_challenge()
+            response = self.client.post(
+                self.verify_url,
+                data=json.dumps(self._payload()),
+                content_type="application/json",
+                REMOTE_ADDR="127.0.0.21",
+            )
+            self.assertEqual(response.status_code, 403)

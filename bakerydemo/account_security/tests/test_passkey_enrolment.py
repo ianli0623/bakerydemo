@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from webauthn.helpers import bytes_to_base64url
 
-from bakerydemo.account_security.models import PasskeyCredential
+from bakerydemo.account_security.models import PasskeyAuditEvent, PasskeyCredential
 from bakerydemo.account_security.passkeys import (
     build_registration_options,
     complete_registration,
@@ -169,6 +169,13 @@ class PasskeyEnrolmentViewTests(TestCase):
             invalid.context["form"].non_field_errors()[0],
             expired.context["form"].non_field_errors()[0],
         )
+        events = PasskeyAuditEvent.objects.filter(event_type="enrolment_rejected")
+        self.assertEqual(events.count(), 2)
+        self.assertEqual(
+            set(events.values_list("reason", flat=True)),
+            {"invalid_or_expired"},
+        )
+        self.assertNotIn(self.raw_code, str(list(events.values())))
 
     def test_registration_options_require_validated_enrolment_session(self):
         unauthorised = self.client.post(

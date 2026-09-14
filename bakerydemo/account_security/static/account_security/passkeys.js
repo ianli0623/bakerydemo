@@ -92,7 +92,7 @@
     };
   }
 
-  async function postJson(url, body) {
+  async function postJson(url, body, fallbackMessage) {
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
@@ -104,7 +104,7 @@
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(payload.error || 'Windows Hello registration failed.');
+      throw new Error(payload.error || fallbackMessage);
     }
     return payload;
   }
@@ -119,28 +119,35 @@
   registrationButton?.addEventListener('click', async () => {
     const status = document.querySelector('[data-passkey-status]');
     if (!supportsWebAuthn()) {
-      status.textContent =
-        'This browser does not support Windows Hello sign-in.';
+      status.textContent = registrationButton.dataset.unsupportedMessage;
       return;
     }
     registrationButton.disabled = true;
-    status.textContent = 'Waiting for Windows Hello…';
+    status.textContent = registrationButton.dataset.waitingMessage;
     try {
-      const options = await postJson(registrationButton.dataset.optionsUrl, {});
+      const options = await postJson(
+        registrationButton.dataset.optionsUrl,
+        {},
+        registrationButton.dataset.errorMessage,
+      );
       const credential = await navigator.credentials.create({
         publicKey: normaliseCreationOptions(options),
       });
-      const result = await postJson(registrationButton.dataset.verifyUrl, {
-        credential: serialiseRegistration(credential),
-        transports: credential.response.getTransports?.() || [],
-      });
+      const result = await postJson(
+        registrationButton.dataset.verifyUrl,
+        {
+          credential: serialiseRegistration(credential),
+          transports: credential.response.getTransports?.() || [],
+        },
+        registrationButton.dataset.errorMessage,
+      );
       window.location.assign(
         result.redirect || registrationButton.dataset.successUrl,
       );
     } catch (error) {
       status.textContent =
         error.name === 'NotAllowedError'
-          ? 'Windows Hello was cancelled or timed out.'
+          ? registrationButton.dataset.cancelledMessage
           : error.message;
       registrationButton.disabled = false;
     }
@@ -152,30 +159,34 @@
   authenticationButton?.addEventListener('click', async () => {
     const status = document.querySelector('[data-passkey-status]');
     if (!supportsWebAuthn()) {
-      status.textContent =
-        'This browser does not support Windows Hello sign-in.';
+      status.textContent = authenticationButton.dataset.unsupportedMessage;
       return;
     }
     authenticationButton.disabled = true;
-    status.textContent = 'Waiting for Windows Hello…';
+    status.textContent = authenticationButton.dataset.waitingMessage;
     try {
       const options = await postJson(
         authenticationButton.dataset.optionsUrl,
         {},
+        authenticationButton.dataset.errorMessage,
       );
       const credential = await navigator.credentials.get({
         publicKey: normaliseRequestOptions(options),
       });
-      const result = await postJson(authenticationButton.dataset.verifyUrl, {
-        credential: serialiseAuthentication(credential),
-      });
+      const result = await postJson(
+        authenticationButton.dataset.verifyUrl,
+        {
+          credential: serialiseAuthentication(credential),
+        },
+        authenticationButton.dataset.errorMessage,
+      );
       window.location.assign(
         result.redirect || authenticationButton.dataset.successUrl,
       );
     } catch (error) {
       status.textContent =
         error.name === 'NotAllowedError'
-          ? 'Windows Hello was cancelled or timed out.'
+          ? authenticationButton.dataset.cancelledMessage
           : error.message;
       authenticationButton.disabled = false;
     }
