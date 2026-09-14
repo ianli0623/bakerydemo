@@ -22,6 +22,12 @@ print(json.dumps({{
     "production_checks": getattr(
         s, "ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS", False
     ),
+    "passkey_cache_alias": getattr(
+        s, "ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS", "default"
+    ),
+    "passkey_cache_ignore_exceptions": getattr(s, "CACHES", {{}}).get(
+        getattr(s, "ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS", "default"), {{}}
+    ).get("OPTIONS", {{}}).get("IGNORE_EXCEPTIONS"),
 }}))
 '''
         environment = os.environ.copy()
@@ -29,6 +35,8 @@ print(json.dumps({{
             "PRIMARY_HOST",
             "SECURE_SSL_REDIRECT",
             "SECURE_HSTS_SECONDS",
+            "REDIS_TLS_URL",
+            "REDIS_URL",
         ):
             environment.pop(key, None)
         environment.update(extra_env or {})
@@ -60,6 +68,18 @@ print(json.dumps({{
             production["admin_url"],
             "https://cms.example.com",
         )
+
+    def test_production_passkey_throttle_cache_fails_closed(self):
+        production = self._read_settings(
+            "bakerydemo.settings.production",
+            {
+                "PRIMARY_HOST": "cms.example.com",
+                "REDIS_URL": "redis://localhost:6379",
+            },
+        )
+
+        self.assertEqual(production["passkey_cache_alias"], "passkey_throttle")
+        self.assertFalse(production["passkey_cache_ignore_exceptions"])
 
     def test_production_https_cannot_be_disabled_by_environment(self):
         production = self._read_settings(

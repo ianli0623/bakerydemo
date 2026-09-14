@@ -196,6 +196,55 @@ class PasskeyEnrolmentViewTests(TestCase):
         self.assertNotIn(self.raw_code, str(challenge_state))
         self.assertIn("challenge", challenge_state)
         self.assertIn("user_handle", challenge_state)
+        self.assertEqual(challenge_state["enrolment_id"], self.enrolment.pk)
+
+    def test_new_failed_validation_clears_previous_registration_context(self):
+        self._validate_code()
+        self.client.post(reverse("account_security:passkey_registration_options"))
+
+        response = self.client.post(
+            self.enrol_url,
+            {"username": self.user.username, "enrolment_code": "wrong"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(
+            "account_security_passkey_enrolment_id",
+            self.client.session,
+        )
+        self.assertNotIn(
+            "account_security_passkey_registration_challenge",
+            self.client.session,
+        )
+
+    @patch("bakerydemo.account_security.passkey_views.complete_registration")
+    def test_registration_challenge_cannot_be_used_for_another_enrolment(
+        self,
+        complete,
+    ):
+        self._validate_code()
+        self.client.post(reverse("account_security:passkey_registration_options"))
+        other_user = get_user_model().objects.create_user(
+            username="other-hello-user",
+            is_staff=True,
+        )
+        other_enrolment, _ = create_enrolment(
+            other_user,
+            self.admin,
+            disable_password_on_success=True,
+        )
+        session = self.client.session
+        session["account_security_passkey_enrolment_id"] = other_enrolment.pk
+        session.save()
+
+        response = self.client.post(
+            reverse("account_security:passkey_registration_verify"),
+            data=json.dumps({"credential": {"id": "credential-id"}}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        complete.assert_not_called()
 
     @patch("bakerydemo.account_security.passkey_views.complete_registration")
     def test_successful_verification_logs_user_in_and_consumes_challenge(

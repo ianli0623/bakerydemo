@@ -15,6 +15,7 @@ from bakerydemo.account_security.models import (
     PasskeyAuditEvent,
     PasskeyCredential,
 )
+from bakerydemo.account_security.passkey_views import GENERIC_LOGIN_ERROR
 from bakerydemo.account_security.passkeys import (
     PasskeyCeremonyError,
     build_authentication_options,
@@ -387,3 +388,45 @@ class PasskeyLoginViewTests(TestCase):
                 REMOTE_ADDR="127.0.0.21",
             )
             self.assertEqual(response.status_code, 403)
+
+    @patch("bakerydemo.account_security.passkey_views.cache.get", return_value=None)
+    @patch("bakerydemo.account_security.passkey_views.verify_login_credential")
+    def test_cache_read_failure_rejects_login_without_server_error(
+        self,
+        verify,
+        _cache_get,
+    ):
+        self._issue_challenge()
+
+        response = self.client.post(
+            self.verify_url,
+            data=json.dumps(self._payload()),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"error": str(GENERIC_LOGIN_ERROR)})
+        self.assertNotIn("_auth_user_id", self.client.session)
+        verify.assert_not_called()
+
+    @patch("bakerydemo.account_security.passkey_views.cache.incr", return_value=None)
+    @patch("bakerydemo.account_security.passkey_views.cache.add", return_value=None)
+    @patch("bakerydemo.account_security.passkeys.verify_authentication_response")
+    def test_cache_write_failure_rejects_login_without_server_error(
+        self,
+        verify,
+        _cache_add,
+        _cache_incr,
+    ):
+        verify.side_effect = InvalidAuthenticationResponse("invalid signature")
+        self._issue_challenge()
+
+        response = self.client.post(
+            self.verify_url,
+            data=json.dumps(self._payload()),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"error": str(GENERIC_LOGIN_ERROR)})
+        self.assertNotIn("_auth_user_id", self.client.session)

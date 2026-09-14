@@ -67,9 +67,20 @@ class TemporaryPasswordUserCreationForm(UserCreationForm):
     )
 
     def __init__(self, *args, **kwargs):
+        self.for_user = kwargs.pop("for_user", None)
         super().__init__(*args, **kwargs)
         del self.fields["password1"]
         del self.fields["password2"]
+        if not self.for_user or not self.for_user.is_superuser:
+            self.fields["authentication_method"].choices = (
+                (
+                    self.AUTHENTICATION_METHOD_TEMPORARY_PASSWORD,
+                    _("Temporary password"),
+                ),
+            )
+            self.fields[
+                "authentication_method"
+            ].initial = self.AUTHENTICATION_METHOD_TEMPORARY_PASSWORD
 
     def save(self, commit=True):
         user = forms.ModelForm.save(self, commit=False)

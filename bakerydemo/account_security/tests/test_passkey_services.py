@@ -2,6 +2,7 @@ import hashlib
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -57,6 +58,21 @@ class PasskeyEnrolmentServiceTests(TestCase):
         first.refresh_from_db()
         self.assertIsNotNone(first.revoked_at)
         self.assertIsNone(second.revoked_at)
+
+    def test_database_allows_only_one_unconsumed_unrevoked_code_per_user(self):
+        create_enrolment(
+            self.user,
+            self.admin,
+            disable_password_on_success=True,
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.user.passkey_enrolments.create(
+                created_by=self.admin,
+                code_digest="f" * 64,
+                disable_password_on_success=True,
+                expires_at=timezone.now() + timedelta(minutes=15),
+            )
 
     def test_validate_enrolment_returns_active_matching_row(self):
         enrolment, raw_code = create_enrolment(

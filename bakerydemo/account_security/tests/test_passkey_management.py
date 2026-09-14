@@ -85,6 +85,7 @@ class PasskeyManagementTests(TestCase):
         raw_code = response.context["enrolment_code"]
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, raw_code)
+        self.assertIn("no-store", response["Cache-Control"])
         self.assertNotEqual(enrolment.code_digest, raw_code)
         self.assertNotIn(raw_code, str(dict(self.client.session)))
         self.assertTrue(

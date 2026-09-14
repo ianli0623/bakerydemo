@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model, login
-from django.core.cache import cache
+from django.core.cache import caches
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseForbidden, JsonResponse
@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 from wagtail.admin import messages
 from webauthn.helpers import base64url_to_bytes
@@ -45,6 +46,11 @@ GENERIC_REGISTRATION_ERROR = _(
 GENERIC_LOGIN_ERROR = _(
     "Windows Hello sign-in could not be completed. Please try again."
 )
+cache = caches[getattr(settings, "ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS", "default")]
+
+
+class PasskeyThrottleUnavailable(Exception):
+    pass
 
 
 def _passkey_failure_key(request, credential_id):
@@ -59,23 +65,41 @@ def _passkey_failure_key(request, credential_id):
 def _passkey_is_rate_limited(request, credential_id):
     key = _passkey_failure_key(request, credential_id)
     limit = settings.ACCOUNT_SECURITY_PASSKEY_FAILURE_LIMIT
-    return cache.get(key, 0) >= limit
+    try:
+        failures = cache.get(key, 0)
+    except Exception as error:
+        raise PasskeyThrottleUnavailable from error
+    if not isinstance(failures, int):
+        raise PasskeyThrottleUnavailable
+    return failures >= limit
 
 
 def _increment_passkey_failures(request, credential_id):
     key = _passkey_failure_key(request, credential_id)
     timeout = settings.ACCOUNT_SECURITY_PASSKEY_LOCKOUT_SECONDS
-    if cache.add(key, 1, timeout=timeout):
-        return 1
     try:
-        return cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, timeout=timeout)
-        return 1
+        added = cache.add(key, 1, timeout=timeout)
+        if added is None:
+            raise PasskeyThrottleUnavailable
+        if added:
+            return 1
+        failures = cache.incr(key)
+    except PasskeyThrottleUnavailable:
+        raise
+    except Exception as error:
+        raise PasskeyThrottleUnavailable from error
+    if not isinstance(failures, int):
+        raise PasskeyThrottleUnavailable
+    return failures
 
 
 def _clear_passkey_failures(request, credential_id):
-    cache.delete(_passkey_failure_key(request, credential_id))
+    try:
+        deleted = cache.delete(_passkey_failure_key(request, credential_id))
+    except Exception as error:
+        raise PasskeyThrottleUnavailable from error
+    if deleted is None:
+        raise PasskeyThrottleUnavailable
 
 
 def _rate_limited_json(request, *, reason):
@@ -90,8 +114,23 @@ def _rate_limited_json(request, *, reason):
     return response
 
 
+def _throttle_unavailable_json(request):
+    record_passkey_event(
+        "login_rate_limited",
+        success=False,
+        request=request,
+        reason="throttle_unavailable",
+    )
+    response = JsonResponse({"error": str(GENERIC_LOGIN_ERROR)}, status=503)
+    response["Retry-After"] = str(settings.ACCOUNT_SECURITY_PASSKEY_LOCKOUT_SECONDS)
+    return response
+
+
 def _reject_passkey_login(request, credential_id, reason):
-    failures = _increment_passkey_failures(request, credential_id)
+    try:
+        failures = _increment_passkey_failures(request, credential_id)
+    except PasskeyThrottleUnavailable:
+        return _throttle_unavailable_json(request)
     if failures >= settings.ACCOUNT_SECURITY_PASSKEY_FAILURE_LIMIT:
         return _rate_limited_json(request, reason="failure_limit_reached")
     record_passkey_event(
@@ -117,6 +156,9 @@ class PasskeyEnrolmentForm(forms.Form):
 
 def passkey_enrol(request):
     registration_ready = False
+    if request.method == "POST":
+        request.session.pop(ENROLMENT_SESSION_KEY, None)
+        request.session.pop(REGISTRATION_CHALLENGE_SESSION_KEY, None)
     form = PasskeyEnrolmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         enrolment = validate_enrolment(
@@ -173,6 +215,7 @@ def _forbidden_json(message):
 
 @require_POST
 def passkey_registration_options(request):
+    request.session.pop(REGISTRATION_CHALLENGE_SESSION_KEY, None)
     enrolment = _active_session_enrolment(request)
     if enrolment is None:
         return HttpResponseForbidden()
@@ -182,12 +225,13 @@ def passkey_registration_options(request):
     request.session[REGISTRATION_CHALLENGE_SESSION_KEY] = {
         "challenge": options["challenge"],
         "user_handle": options["user"]["id"],
+        "enrolment_id": enrolment.pk,
         "issued_at": timezone.now().timestamp(),
     }
     return JsonResponse(options)
 
 
-def _pop_valid_registration_challenge(request):
+def _pop_valid_registration_challenge(request, enrolment_id):
     state = request.session.pop(REGISTRATION_CHALLENGE_SESSION_KEY, None)
     if not isinstance(state, dict):
         return None
@@ -195,7 +239,10 @@ def _pop_valid_registration_challenge(request):
         issued_at = datetime.fromtimestamp(float(state["issued_at"]), tz=UTC)
         challenge = base64url_to_bytes(state["challenge"])
         user_handle = base64url_to_bytes(state["user_handle"])
+        state_enrolment_id = int(state["enrolment_id"])
     except (BinasciiError, KeyError, TypeError, ValueError):
+        return None
+    if state_enrolment_id != enrolment_id:
         return None
     ttl = settings.ACCOUNT_SECURITY_WEBAUTHN_CHALLENGE_TTL_SECONDS
     if (timezone.now() - issued_at).total_seconds() >= ttl:
@@ -207,8 +254,12 @@ def _pop_valid_registration_challenge(request):
 @transaction.atomic
 def passkey_registration_verify(request):
     enrolment = _active_session_enrolment(request)
-    challenge_state = _pop_valid_registration_challenge(request)
+    challenge_state = _pop_valid_registration_challenge(
+        request,
+        enrolment.pk if enrolment is not None else None,
+    )
     if enrolment is None or challenge_state is None:
+        request.session.pop(ENROLMENT_SESSION_KEY, None)
         record_passkey_event(
             "registration_failed",
             success=False,
@@ -316,7 +367,12 @@ def passkey_authentication_verify(request):
         _pop_valid_authentication_challenge(request)
         return _reject_passkey_login(request, None, "invalid_request")
 
-    if _passkey_is_rate_limited(request, credential_id):
+    try:
+        rate_limited = _passkey_is_rate_limited(request, credential_id)
+    except PasskeyThrottleUnavailable:
+        _pop_valid_authentication_challenge(request)
+        return _throttle_unavailable_json(request)
+    if rate_limited:
         _pop_valid_authentication_challenge(request)
         return _rate_limited_json(request, reason="failure_limit_reached")
 
@@ -341,7 +397,10 @@ def passkey_authentication_verify(request):
         )
         return _reject_passkey_login(request, credential_id, reason)
 
-    _clear_passkey_failures(request, credential_id)
+    try:
+        _clear_passkey_failures(request, credential_id)
+    except PasskeyThrottleUnavailable:
+        return _throttle_unavailable_json(request)
     record_passkey_event(
         "login_succeeded",
         success=True,
@@ -409,6 +468,7 @@ def passkey_management(request):
 
 
 @require_POST
+@never_cache
 @transaction.atomic
 def passkey_generate_enrolment(request, user_id):
     _require_superuser(request)

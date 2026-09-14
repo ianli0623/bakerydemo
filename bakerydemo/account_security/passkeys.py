@@ -46,9 +46,11 @@ def _code_digest(raw_code):
 
 @transaction.atomic
 def create_enrolment(user, created_by, *, disable_password_on_success):
+    user_model = get_user_model()
+    locked_user = user_model._default_manager.select_for_update().get(pk=user.pk)
     now = timezone.now()
     PasskeyEnrolment.objects.filter(
-        user=user,
+        user=locked_user,
         consumed_at__isnull=True,
         revoked_at__isnull=True,
     ).update(revoked_at=now)
@@ -60,7 +62,7 @@ def create_enrolment(user, created_by, *, disable_password_on_success):
         DEFAULT_ENROLMENT_TTL_SECONDS,
     )
     enrolment = PasskeyEnrolment.objects.create(
-        user=user,
+        user=locked_user,
         created_by=created_by,
         code_digest=_code_digest(raw_code),
         disable_password_on_success=disable_password_on_success,

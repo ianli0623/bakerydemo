@@ -81,6 +81,10 @@ if REDIS_URL:
         "SOCKET_TIMEOUT": 2,  # seconds
         "CONNECTION_POOL_KWARGS": connection_pool_kwargs,
     }
+    passkey_redis_options = {
+        **redis_options,
+        "IGNORE_EXCEPTIONS": False,
+    }
 
     CACHES = {
         "default": {
@@ -93,7 +97,13 @@ if REDIS_URL:
             "LOCATION": REDIS_URL + "/1",
             "OPTIONS": redis_options,
         },
+        "passkey_throttle": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL + "/2",
+            "OPTIONS": passkey_redis_options,
+        },
     }
+    ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS = "passkey_throttle"
     DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
 else:
     CACHES = {

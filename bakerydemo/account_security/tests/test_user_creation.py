@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -52,6 +53,20 @@ class TemporaryPasswordUserCreationTests(TestCase):
 
         self.assertNotContains(next_response, temporary_password)
 
+    def test_secret_responses_are_not_cached(self):
+        response = self.client.post(
+            reverse("wagtailusers_users:add"),
+            {
+                "username": "no-cache-editor",
+                "email": "no-cache-editor@example.com",
+                "first_name": "No Cache",
+                "last_name": "Editor",
+                "authentication_method": "windows_hello",
+            },
+        )
+
+        self.assertIn("no-store", response["Cache-Control"])
+
     def test_creator_receives_one_time_windows_hello_enrolment_code(self):
         response = self.client.post(
             reverse("wagtailusers_users:add"),
@@ -80,3 +95,44 @@ class TemporaryPasswordUserCreationTests(TestCase):
         self.assertContains(response, raw_code)
         self.assertNotEqual(enrolment.code_digest, raw_code)
         self.assertNotIn(raw_code, str(dict(self.client.session)))
+
+    def test_delegated_user_administrator_cannot_issue_windows_hello_code(self):
+        delegated_admin = get_user_model().objects.create_user(
+            username="delegated-admin",
+            is_staff=True,
+            password="Delegated-Password-1!",
+        )
+        delegated_admin.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="wagtailadmin",
+                codename="access_admin",
+            ),
+            Permission.objects.get(
+                content_type__app_label="auth",
+                codename="add_user",
+            ),
+        )
+        sync_password_change(delegated_admin, must_change_password=False)
+        self.client.force_login(delegated_admin)
+
+        get_response = self.client.get(reverse("wagtailusers_users:add"))
+        post_response = self.client.post(
+            reverse("wagtailusers_users:add"),
+            {
+                "username": "unauthorised-hello-editor",
+                "email": "unauthorised@example.com",
+                "first_name": "Unauthorised",
+                "last_name": "Editor",
+                "authentication_method": "windows_hello",
+            },
+        )
+
+        self.assertEqual(get_response.status_code, 200)
+        self.assertNotContains(get_response, 'value="windows_hello"')
+        self.assertEqual(post_response.status_code, 200)
+        self.assertFalse(
+            get_user_model()
+            .objects.filter(username="unauthorised-hello-editor")
+            .exists()
+        )
+        self.assertFalse(PasskeyEnrolment.objects.exists())

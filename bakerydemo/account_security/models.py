@@ -82,6 +82,16 @@ class PasskeyEnrolment(models.Model):
                 name="passkey_user_expiry_idx",
             )
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(
+                    consumed_at__isnull=True,
+                    revoked_at__isnull=True,
+                ),
+                name="passkey_one_pending_per_user",
+            )
+        ]
 
 
 class PasskeyAuditEvent(models.Model):
