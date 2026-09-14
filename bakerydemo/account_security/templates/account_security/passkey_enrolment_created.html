@@ -1,0 +1,39 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n static %}
+
+{% block titletag %}{% translate "User created" %}{% endblock %}
+
+{% block content %}
+  <main class="nice-padding" id="main">
+    <h1>{% translate "Windows Hello enrolment" %}</h1>
+    <p>
+      {% blocktranslate with username=created_user.get_username %}User "{{ username }}" was created successfully.{% endblocktranslate %}
+    </p>
+    <p>{% translate "Copy this Windows Hello enrolment code now. It will not be shown again and expires in 15 minutes." %}</p>
+    <div class="field-content">
+      <label for="temporary-password">{% translate "Windows Hello enrolment code" %}</label>
+      <input
+        id="temporary-password"
+        type="text"
+        value="{{ enrolment_code }}"
+        readonly
+        autocomplete="off"
+        data-temporary-password
+      >
+      <button class="button" type="button" data-copy-temporary-password>
+        {% translate "Copy code" %}
+      </button>
+      <p hidden role="status" data-temporary-password-copy-status>
+        {% translate "Code copied." %}
+      </p>
+    </div>
+    <p>
+      {% translate "The user must open the Windows Hello enrolment page on the Windows computer they will use for administration." %}
+    </p>
+    <a class="button button-secondary" href="{% url 'wagtailusers_users:index' %}">
+      {% translate "Back to users" %}
+    </a>
+  </main>
+  <script src="{% static 'account_security/temporary_password.js' %}"></script>
+{% endblock %}
+

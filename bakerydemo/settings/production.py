@@ -38,6 +38,17 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 if "PRIMARY_HOST" in os.environ:
     WAGTAILADMIN_BASE_URL = "https://{}".format(os.environ["PRIMARY_HOST"])
 
+ACCOUNT_SECURITY_WEBAUTHN_RP_ID = os.environ.get(
+    "WEBAUTHN_RP_ID",
+    os.environ.get("PRIMARY_HOST", ""),
+)
+ACCOUNT_SECURITY_WEBAUTHN_ORIGIN = os.environ.get(
+    "WEBAUTHN_ORIGIN",
+    "https://{}".format(os.environ["PRIMARY_HOST"])
+    if "PRIMARY_HOST" in os.environ
+    else "",
+)
+
 # AWS creds may be used for S3 and/or Elasticsearch
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")

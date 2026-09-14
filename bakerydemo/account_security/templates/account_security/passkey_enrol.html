@@ -1,0 +1,39 @@
+{% extends "wagtailadmin/login.html" %}
+{% load i18n static %}
+
+{% block branding_logo %}{% endblock %}
+{% block branding_login %}{% translate "Windows Hello enrolment" %}{% endblock %}
+
+{% block login_form %}
+  {% if registration_ready %}
+    {% csrf_token %}
+    <p>{% translate "The enrolment code is valid. Continue to register Windows Hello on this computer." %}</p>
+    <button
+      class="button button-longrunning"
+      type="button"
+      data-passkey-registration
+      data-options-url="{% url 'account_security:passkey_registration_options' %}"
+      data-verify-url="{% url 'account_security:passkey_registration_verify' %}"
+      data-success-url="{% url 'wagtailadmin_home' %}"
+    >
+      {% translate "Register Windows Hello" %}
+    </button>
+    <p role="status" aria-live="polite" data-passkey-status></p>
+  {% else %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <div class="field-content">
+          {{ field.label_tag }}
+          {{ field }}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <button class="button button-longrunning" type="submit">
+        {% translate "Validate enrolment code" %}
+      </button>
+    </form>
+  {% endif %}
+  <script src="{% static 'account_security/passkeys.js' %}"></script>
+{% endblock %}

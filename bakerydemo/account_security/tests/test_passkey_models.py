@@ -64,4 +64,3 @@ class PasskeyCredentialTests(TestCase):
 
         event.refresh_from_db()
         self.assertIsNone(event.credential)
-

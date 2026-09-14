@@ -48,6 +48,24 @@ def generate_temporary_password(user):
 
 
 class TemporaryPasswordUserCreationForm(UserCreationForm):
+    AUTHENTICATION_METHOD_WINDOWS_HELLO = "windows_hello"
+    AUTHENTICATION_METHOD_TEMPORARY_PASSWORD = "temporary_password"
+
+    authentication_method = forms.ChoiceField(
+        label=_("Authentication method"),
+        choices=(
+            (
+                AUTHENTICATION_METHOD_WINDOWS_HELLO,
+                _("Windows Hello (passwordless)"),
+            ),
+            (
+                AUTHENTICATION_METHOD_TEMPORARY_PASSWORD,
+                _("Temporary password"),
+            ),
+        ),
+        initial=AUTHENTICATION_METHOD_WINDOWS_HELLO,
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         del self.fields["password1"]
@@ -55,8 +73,13 @@ class TemporaryPasswordUserCreationForm(UserCreationForm):
 
     def save(self, commit=True):
         user = forms.ModelForm.save(self, commit=False)
-        self.temporary_password = generate_temporary_password(user)
-        user.set_password(self.temporary_password)
+        authentication_method = self.cleaned_data["authentication_method"]
+        self.temporary_password = None
+        if authentication_method == self.AUTHENTICATION_METHOD_WINDOWS_HELLO:
+            user.set_unusable_password()
+        else:
+            self.temporary_password = generate_temporary_password(user)
+            user.set_password(self.temporary_password)
 
         if commit:
             user.save()

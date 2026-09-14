@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from bakerydemo.account_security.models import PasskeyEnrolment
 from bakerydemo.account_security.services import sync_password_change
 
 
@@ -23,6 +24,7 @@ class TemporaryPasswordUserCreationTests(TestCase):
                 "email": "new-editor@example.com",
                 "first_name": "New",
                 "last_name": "Editor",
+                "authentication_method": "temporary_password",
             },
         )
 
@@ -49,3 +51,32 @@ class TemporaryPasswordUserCreationTests(TestCase):
         next_response = self.client.get(reverse("wagtailusers_users:index"))
 
         self.assertNotContains(next_response, temporary_password)
+
+    def test_creator_receives_one_time_windows_hello_enrolment_code(self):
+        response = self.client.post(
+            reverse("wagtailusers_users:add"),
+            {
+                "username": "hello-editor",
+                "email": "hello-editor@example.com",
+                "first_name": "Hello",
+                "last_name": "Editor",
+                "authentication_method": "windows_hello",
+            },
+        )
+
+        user = get_user_model().objects.get(username="hello-editor")
+        enrolment = PasskeyEnrolment.objects.get(user=user)
+        raw_code = response.context["enrolment_code"]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "account_security/passkey_enrolment_created.html",
+        )
+        self.assertFalse(user.has_usable_password())
+        self.assertFalse(user.account_security_state.must_change_password)
+        self.assertIsNone(user.account_security_state.password_changed_at)
+        self.assertContains(response, "Windows Hello")
+        self.assertContains(response, raw_code)
+        self.assertNotEqual(enrolment.code_digest, raw_code)
+        self.assertNotIn(raw_code, str(dict(self.client.session)))
