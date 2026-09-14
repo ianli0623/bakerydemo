@@ -17,19 +17,27 @@ from webauthn.helpers.exceptions import WebAuthnException
 from .models import PasskeyEnrolment
 from .passkeys import (
     PasskeyCeremonyError,
+    build_authentication_options,
     build_registration_options,
     complete_registration,
     record_passkey_event,
     validate_enrolment,
+    verify_login_credential,
 )
 
 ENROLMENT_SESSION_KEY = "account_security_passkey_enrolment_id"
 REGISTRATION_CHALLENGE_SESSION_KEY = "account_security_passkey_registration_challenge"
+AUTHENTICATION_CHALLENGE_SESSION_KEY = (
+    "account_security_passkey_authentication_challenge"
+)
 GENERIC_ENROLMENT_ERROR = _(
     "The enrolment details are invalid or expired. Ask an administrator for a new code."
 )
 GENERIC_REGISTRATION_ERROR = _(
     "Windows Hello registration could not be completed. Please try again."
+)
+GENERIC_LOGIN_ERROR = _(
+    "Windows Hello sign-in could not be completed. Please try again."
 )
 
 
@@ -178,6 +186,93 @@ def passkey_registration_verify(request):
     login(
         request,
         enrolment.user,
+        backend="django.contrib.auth.backends.ModelBackend",
+    )
+    return JsonResponse({"redirect": reverse("wagtailadmin_home")})
+
+
+def passkey_login(request):
+    return render(request, "account_security/passkey_login.html")
+
+
+@require_POST
+def passkey_authentication_options(request):
+    options = json.loads(build_authentication_options())
+    request.session[AUTHENTICATION_CHALLENGE_SESSION_KEY] = {
+        "challenge": options["challenge"],
+        "issued_at": timezone.now().timestamp(),
+    }
+    return JsonResponse(options)
+
+
+def _pop_valid_authentication_challenge(request):
+    state = request.session.pop(AUTHENTICATION_CHALLENGE_SESSION_KEY, None)
+    if not isinstance(state, dict):
+        return None
+    try:
+        issued_at = datetime.fromtimestamp(float(state["issued_at"]), tz=UTC)
+        challenge = base64url_to_bytes(state["challenge"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    ttl = settings.ACCOUNT_SECURITY_WEBAUTHN_CHALLENGE_TTL_SECONDS
+    if (timezone.now() - issued_at).total_seconds() >= ttl:
+        return None
+    return challenge
+
+
+@require_POST
+def passkey_authentication_verify(request):
+    challenge = _pop_valid_authentication_challenge(request)
+    if challenge is None:
+        record_passkey_event(
+            "login_failed",
+            success=False,
+            request=request,
+            reason="invalid_challenge",
+        )
+        return _forbidden_json(GENERIC_LOGIN_ERROR)
+
+    try:
+        payload = json.loads(request.body)
+        credential_payload = payload["credential"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        record_passkey_event(
+            "login_failed",
+            success=False,
+            request=request,
+            reason="invalid_request",
+        )
+        return _forbidden_json(GENERIC_LOGIN_ERROR)
+
+    try:
+        credential = verify_login_credential(
+            credential_payload=credential_payload,
+            challenge=challenge,
+        )
+    except (PasskeyCeremonyError, WebAuthnException) as error:
+        reason = (
+            str(error)
+            if isinstance(error, PasskeyCeremonyError)
+            else "invalid_authentication"
+        )
+        record_passkey_event(
+            "login_failed",
+            success=False,
+            request=request,
+            reason=reason,
+        )
+        return _forbidden_json(GENERIC_LOGIN_ERROR)
+
+    record_passkey_event(
+        "login_succeeded",
+        success=True,
+        user=credential.user,
+        credential=credential,
+        request=request,
+    )
+    login(
+        request,
+        credential.user,
         backend="django.contrib.auth.backends.ModelBackend",
     )
     return JsonResponse({"redirect": reverse("wagtailadmin_home")})

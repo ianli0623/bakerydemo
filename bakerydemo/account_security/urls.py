@@ -21,4 +21,19 @@ urlpatterns = [
         passkey_views.passkey_registration_verify,
         name="passkey_registration_verify",
     ),
+    path(
+        "windows-hello/login/",
+        passkey_views.passkey_login,
+        name="passkey_login",
+    ),
+    path(
+        "windows-hello/login/options/",
+        passkey_views.passkey_authentication_options,
+        name="passkey_authentication_options",
+    ),
+    path(
+        "windows-hello/login/verify/",
+        passkey_views.passkey_authentication_verify,
+        name="passkey_authentication_verify",
+    ),
 ]

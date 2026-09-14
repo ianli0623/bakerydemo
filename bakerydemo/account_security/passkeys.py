@@ -1,5 +1,7 @@
 import hashlib
+import json
 import secrets
+from binascii import Error as BinasciiError
 from datetime import timedelta
 
 from django.conf import settings
@@ -8,7 +10,12 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_ipv46_address
 from django.db import transaction
 from django.utils import timezone
-from webauthn import generate_registration_options, verify_registration_response
+from webauthn import (
+    generate_authentication_options,
+    generate_registration_options,
+    verify_authentication_response,
+    verify_registration_response,
+)
 from webauthn.helpers import (
     base64url_to_bytes,
     bytes_to_base64url,
@@ -112,6 +119,16 @@ def build_registration_options(user):
     return options_to_json(options)
 
 
+def build_authentication_options():
+    options = generate_authentication_options(
+        rp_id=settings.ACCOUNT_SECURITY_WEBAUTHN_RP_ID,
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    serialised_options = json.loads(options_to_json(options))
+    serialised_options.pop("allowCredentials", None)
+    return json.dumps(serialised_options)
+
+
 def _enum_value(value):
     return value.value if hasattr(value, "value") else str(value)
 
@@ -174,6 +191,64 @@ def complete_registration(
 
     locked_enrolment.consumed_at = now
     locked_enrolment.save(update_fields=["consumed_at"])
+    return credential
+
+
+@transaction.atomic
+def verify_login_credential(*, credential_payload, challenge):
+    try:
+        credential_id = credential_payload["id"]
+        encoded_user_handle = credential_payload["response"]["userHandle"]
+        if not isinstance(credential_id, str) or not isinstance(
+            encoded_user_handle,
+            str,
+        ):
+            raise TypeError
+        supplied_user_handle = base64url_to_bytes(encoded_user_handle)
+    except (BinasciiError, KeyError, TypeError, ValueError):
+        raise PasskeyCeremonyError("unknown_credential") from None
+
+    credential = (
+        PasskeyCredential.objects.select_for_update()
+        .select_related("user")
+        .filter(
+            credential_id=credential_id,
+            revoked_at__isnull=True,
+            user__is_active=True,
+            user__is_staff=True,
+        )
+        .first()
+    )
+    if credential is None or not secrets.compare_digest(
+        bytes(credential.user_handle),
+        supplied_user_handle,
+    ):
+        raise PasskeyCeremonyError("unknown_credential")
+
+    verification = verify_authentication_response(
+        credential=credential_payload,
+        expected_challenge=challenge,
+        expected_rp_id=settings.ACCOUNT_SECURITY_WEBAUTHN_RP_ID,
+        expected_origin=settings.ACCOUNT_SECURITY_WEBAUTHN_ORIGIN,
+        credential_public_key=bytes(credential.credential_public_key),
+        credential_current_sign_count=credential.sign_count,
+        require_user_verification=True,
+    )
+    if credential.sign_count and verification.new_sign_count <= credential.sign_count:
+        raise PasskeyCeremonyError("sign_count_regression")
+
+    credential.sign_count = verification.new_sign_count
+    credential.device_type = _enum_value(verification.credential_device_type)
+    credential.backed_up = verification.credential_backed_up
+    credential.last_used_at = timezone.now()
+    credential.save(
+        update_fields=[
+            "sign_count",
+            "device_type",
+            "backed_up",
+            "last_used_at",
+        ]
+    )
     return credential
 
 

@@ -1,14 +1,6 @@
 (() => {
   'use strict';
 
-  const registrationButton = document.querySelector(
-    '[data-passkey-registration]',
-  );
-  if (!registrationButton) {
-    return;
-  }
-
-  const status = document.querySelector('[data-passkey-status]');
   const csrfToken =
     document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
     getCookie('csrftoken');
@@ -55,6 +47,18 @@
     return options;
   }
 
+  function normaliseRequestOptions(options) {
+    options.challenge = decode(options.challenge);
+    options.allowCredentials = (options.allowCredentials || []).map((item) => ({
+      ...item,
+      id: decode(item.id),
+    }));
+    if (!options.allowCredentials.length) {
+      delete options.allowCredentials;
+    }
+    return options;
+  }
+
   function serialiseRegistration(credential) {
     return {
       id: credential.id,
@@ -66,6 +70,24 @@
         attestationObject: encode(credential.response.attestationObject),
         clientDataJSON: encode(credential.response.clientDataJSON),
         transports: credential.response.getTransports?.() || [],
+      },
+    };
+  }
+
+  function serialiseAuthentication(credential) {
+    return {
+      id: credential.id,
+      rawId: encode(credential.rawId),
+      type: credential.type,
+      authenticatorAttachment: credential.authenticatorAttachment,
+      clientExtensionResults: credential.getClientExtensionResults(),
+      response: {
+        authenticatorData: encode(credential.response.authenticatorData),
+        clientDataJSON: encode(credential.response.clientDataJSON),
+        signature: encode(credential.response.signature),
+        userHandle: credential.response.userHandle
+          ? encode(credential.response.userHandle)
+          : null,
       },
     };
   }
@@ -87,8 +109,16 @@
     return payload;
   }
 
-  registrationButton.addEventListener('click', async () => {
-    if (!window.PublicKeyCredential || !navigator.credentials) {
+  function supportsWebAuthn() {
+    return window.PublicKeyCredential && navigator.credentials;
+  }
+
+  const registrationButton = document.querySelector(
+    '[data-passkey-registration]',
+  );
+  registrationButton?.addEventListener('click', async () => {
+    const status = document.querySelector('[data-passkey-status]');
+    if (!supportsWebAuthn()) {
       status.textContent =
         'This browser does not support Windows Hello sign-in.';
       return;
@@ -113,6 +143,41 @@
           ? 'Windows Hello was cancelled or timed out.'
           : error.message;
       registrationButton.disabled = false;
+    }
+  });
+
+  const authenticationButton = document.querySelector(
+    '[data-passkey-authentication]',
+  );
+  authenticationButton?.addEventListener('click', async () => {
+    const status = document.querySelector('[data-passkey-status]');
+    if (!supportsWebAuthn()) {
+      status.textContent =
+        'This browser does not support Windows Hello sign-in.';
+      return;
+    }
+    authenticationButton.disabled = true;
+    status.textContent = 'Waiting for Windows Hello…';
+    try {
+      const options = await postJson(
+        authenticationButton.dataset.optionsUrl,
+        {},
+      );
+      const credential = await navigator.credentials.get({
+        publicKey: normaliseRequestOptions(options),
+      });
+      const result = await postJson(authenticationButton.dataset.verifyUrl, {
+        credential: serialiseAuthentication(credential),
+      });
+      window.location.assign(
+        result.redirect || authenticationButton.dataset.successUrl,
+      );
+    } catch (error) {
+      status.textContent =
+        error.name === 'NotAllowedError'
+          ? 'Windows Hello was cancelled or timed out.'
+          : error.message;
+      authenticationButton.disabled = false;
     }
   });
 })();

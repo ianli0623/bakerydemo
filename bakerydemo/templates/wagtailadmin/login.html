@@ -1,3 +1,12 @@
 {% extends "wagtailadmin/login.html" %}
+{% load i18n %}
 
 {% block branding_logo %}{% endblock %}
+
+{% block below_login %}
+    <p>
+        <a class="button button-secondary" href="{% url 'account_security:passkey_login' %}">
+            {% translate "Sign in with Windows Hello" %}
+        </a>
+    </p>
+{% endblock %}
