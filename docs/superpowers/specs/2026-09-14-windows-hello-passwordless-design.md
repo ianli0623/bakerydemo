@@ -210,4 +210,3 @@ device registration, revocation, expired enrolment and the break-glass account.
 4. Convert selected users to unusable passwords only after successful enrolment.
 5. Keep and test the break-glass account before considering removal of the
    visible password form in a later release.
-

@@ -487,4 +487,3 @@ results in the delivery notes without recording fingerprint data.
 git add bakerydemo/account_security bakerydemo/settings docs/windows-hello-admin-runbook.md
 git commit -m "feat: harden Windows Hello administration"
 ```
-
