@@ -225,12 +225,10 @@ test('about and certification use the legacy rich-text lead when introduction is
       value: { heading_text: '後續內容', size: 'h2' },
     } satisfies BakeryStreamBlock;
 
-    const page = standardPage(
-      scenario.slug,
-      'Original page title',
-      '',
-      [lead, content],
-    );
+    const page = standardPage(scenario.slug, 'Original page title', '', [
+      lead,
+      content,
+    ]);
     page.section_kicker = scenario.kicker;
     page.section_heading = scenario.title;
     const presentation = getStandardPagePresentation(scenario.slug, page);
@@ -268,12 +266,10 @@ test('an edited introduction takes precedence over the legacy lead paragraph', (
     type: 'heading_block',
     value: { heading_text: '後續內容', size: 'h2' },
   } satisfies BakeryStreamBlock;
-  const page = standardPage(
-    'about',
-    '認識標準',
-    '111111新的頁面介紹11111',
-    [legacyLead, content],
-  );
+  const page = standardPage('about', '認識標準', '111111新的頁面介紹11111', [
+    legacyLead,
+    content,
+  ]);
 
   const presentation = getStandardPagePresentation('about', page);
 
