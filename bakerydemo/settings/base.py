@@ -128,7 +128,7 @@ WSGI_APPLICATION = "bakerydemo.wsgi.application"
 
 if "DATABASE_URL" in os.environ:
     DATABASES = {"default": dj_database_url.config(conn_max_age=500)}
-    if os.environ["DATABASE_URL"].startswith("postgres://"):
+    if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
         INSTALLED_APPS.append("django.contrib.postgres")
 else:
     DATABASES = {
@@ -168,16 +168,24 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
-    "django.contrib.auth.backends.ModelBackend",
+    "bakerydemo.account_security.authentication.EmailAuthenticationBackend",
 ]
 
 ACCOUNT_SECURITY_PASSWORD_MAX_AGE_DAYS = 90
 ACCOUNT_SECURITY_PROTECTED_PREFIXES = ("/admin/", "/django-admin/")
 ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS = False
+ACCOUNT_SECURITY_WEBAUTHN_RP_NAME = "SEMI E187"
+ACCOUNT_SECURITY_WEBAUTHN_ENROLMENT_TTL_SECONDS = 900
+ACCOUNT_SECURITY_WEBAUTHN_CHALLENGE_TTL_SECONDS = 300
+ACCOUNT_SECURITY_PASSKEY_FAILURE_LIMIT = 5
+ACCOUNT_SECURITY_PASSKEY_LOCKOUT_SECONDS = 900
+ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS = "default"
 
 # Wagtail 7.4 embeds password editing in the account page. Disable that editor
 # so every password change uses the transactional security flow above.
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
+WAGTAIL_EMAIL_MANAGEMENT_ENABLED = False
+WAGTAIL_ENABLE_UPDATE_CHECK = False
 
 AXES_HANDLER = "axes.handlers.database.AxesDatabaseHandler"
 AXES_FAILURE_LIMIT = 5

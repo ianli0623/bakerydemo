@@ -38,6 +38,17 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 if "PRIMARY_HOST" in os.environ:
     WAGTAILADMIN_BASE_URL = "https://{}".format(os.environ["PRIMARY_HOST"])
 
+ACCOUNT_SECURITY_WEBAUTHN_RP_ID = os.environ.get(
+    "WEBAUTHN_RP_ID",
+    os.environ.get("PRIMARY_HOST", ""),
+)
+ACCOUNT_SECURITY_WEBAUTHN_ORIGIN = os.environ.get(
+    "WEBAUTHN_ORIGIN",
+    "https://{}".format(os.environ["PRIMARY_HOST"])
+    if "PRIMARY_HOST" in os.environ
+    else "",
+)
+
 # AWS creds may be used for S3 and/or Elasticsearch
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
@@ -70,6 +81,10 @@ if REDIS_URL:
         "SOCKET_TIMEOUT": 2,  # seconds
         "CONNECTION_POOL_KWARGS": connection_pool_kwargs,
     }
+    passkey_redis_options = {
+        **redis_options,
+        "IGNORE_EXCEPTIONS": False,
+    }
 
     CACHES = {
         "default": {
@@ -82,7 +97,13 @@ if REDIS_URL:
             "LOCATION": REDIS_URL + "/1",
             "OPTIONS": redis_options,
         },
+        "passkey_throttle": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL + "/2",
+            "OPTIONS": passkey_redis_options,
+        },
     }
+    ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS = "passkey_throttle"
     DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
 else:
     CACHES = {

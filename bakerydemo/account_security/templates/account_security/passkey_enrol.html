@@ -1,0 +1,59 @@
+{% extends "wagtailadmin/login.html" %}
+{% load i18n static %}
+
+{% block branding_logo %}{% endblock %}
+{% block branding_login %}{% translate "Windows Hello enrolment" %}{% endblock %}
+
+{% block login_form %}
+  {% csrf_token %}
+  {% if registration_ready %}
+    <p>{% translate "The enrolment code is valid. Continue to register Windows Hello on this computer." %}</p>
+    <button
+      class="button button-longrunning"
+      type="button"
+      data-passkey-registration
+      data-options-url="{% url 'account_security:passkey_registration_options' %}"
+      data-verify-url="{% url 'account_security:passkey_registration_verify' %}"
+      data-success-url="{% url 'wagtailadmin_home' %}"
+      data-unsupported-message="{% translate 'This browser does not support Windows Hello.' %}"
+      data-waiting-message="{% translate 'Waiting for Windows Hello…' %}"
+      data-cancelled-message="{% translate 'Windows Hello was cancelled or timed out.' %}"
+      data-error-message="{% translate 'Windows Hello registration could not be completed. Please try again.' %}"
+    >
+      {% translate "Register Windows Hello" %}
+    </button>
+    <p role="status" aria-live="polite" data-passkey-status></p>
+  {% else %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="field-content">
+        {{ field.label_tag }}
+        {{ field }}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button
+      class="button button-longrunning"
+      type="submit"
+      formaction="{% url 'account_security:passkey_enrol' %}"
+    >
+      {% translate "Validate enrolment code" %}
+    </button>
+  {% endif %}
+  <script src="{% static 'account_security/passkeys.js' %}"></script>
+{% endblock %}
+
+{% block submit_buttons %}{% endblock %}
+
+{% block below_login %}
+  <p>
+    <a class="button button-secondary" href="{% url 'account_security:passkey_login' %}">
+      {% translate "Sign in with Windows Hello" %}
+    </a>
+  </p>
+  <p>
+    <a class="button button-secondary" href="{% url 'wagtailadmin_login' %}">
+      {% translate "Sign in with an email address and password" %}
+    </a>
+  </p>
+{% endblock %}

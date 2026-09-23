@@ -1,0 +1,85 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% translate "Windows Hello management" %}{% endblock %}
+
+{% block content %}
+    {% translate "Windows Hello management" as page_title %}
+    {% include "wagtailadmin/shared/header.html" with title=page_title icon="user" %}
+
+    <div class="nice-padding">
+        {% if enrolment_code %}
+            <div class="help-block help-info">
+                <p>
+                    {% blocktranslate with email=enrolment_user.email %}Copy the enrolment code for {{ email }} now. It expires in 15 minutes and will not be shown again.{% endblocktranslate %}
+                </p>
+                <p><strong>{% translate "Windows Hello enrolment code" %}:</strong></p>
+                <input type="text" value="{{ enrolment_code }}" readonly autocomplete="off">
+            </div>
+        {% endif %}
+
+        <p>{% translate "Manage registered Windows Hello credentials and issue one-time enrolment codes for admin users." %}</p>
+        <table class="listing">
+            <thead>
+                <tr>
+                    <th>{% translate "Email (account ID)" %}</th>
+                    <th>{% translate "Alias / display name" %}</th>
+                    <th>{% translate "Active credentials" %}</th>
+                    <th>{% translate "Pending enrolment" %}</th>
+                    <th>{% translate "Actions" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in user_rows %}
+                    <tr>
+                        <td>{{ row.user.email }}</td>
+                        <td>{{ row.user.get_username }}</td>
+                        <td>
+                            {% if row.active_credentials %}
+                                <ul>
+                                    {% for credential in row.active_credentials %}
+                                        <li>
+                                            {{ credential.label }}
+                                            {% if credential.last_used_at %}
+                                                — {% blocktranslate with used=credential.last_used_at|date:"Y/m/d H:i" %}Last used {{ used }}{% endblocktranslate %}
+                                            {% endif %}
+                                            <form method="post" action="{% url 'account_security_passkey_revoke' credential.pk %}">
+                                                {% csrf_token %}
+                                                <button class="button button-small button-secondary" type="submit">
+                                                    {% translate "Revoke" %}
+                                                </button>
+                                            </form>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                {% translate "None" %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.pending_enrolments %}
+                                {% for enrolment in row.pending_enrolments %}
+                                    {% blocktranslate with expiry=enrolment.expires_at|date:"Y/m/d H:i" %}Expires {{ expiry }}{% endblocktranslate %}
+                                {% endfor %}
+                            {% else %}
+                                {% translate "None" %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'account_security_passkey_generate_enrolment' row.user.pk %}">
+                                {% csrf_token %}
+                                <button class="button button-small" type="submit">
+                                    {% translate "Generate enrolment code" %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">{% translate "No admin users were found." %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

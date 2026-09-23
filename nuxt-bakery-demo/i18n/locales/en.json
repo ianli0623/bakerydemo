@@ -5,7 +5,10 @@
     "fontSize": "Text size",
     "fontSmaller": "Decrease text size",
     "fontReset": "Reset text size",
-    "fontLarger": "Increase text size"
+    "fontLarger": "Increase text size",
+    "upperRegion": "Upper function area",
+    "centralRegion": "Main content area",
+    "footerRegion": "Footer area"
   },
   "language": {
     "label": "Language",
@@ -18,7 +21,73 @@
     "closeMenu": "Close menu",
     "home": "Home",
     "contact": "Contact us",
+    "siteMap": "Site map",
     "footer": "Footer navigation"
+  },
+  "siteMap": {
+    "eyebrow": "SITE MAP",
+    "title": "Site map",
+    "introduction": "This page provides a complete guide to the site regions, access keys, and main features.",
+    "regionsHeading": "Site regions",
+    "regionsIntroduction": "This website follows accessible web design principles and is divided into three main regions:",
+    "regions": {
+      "upper": "Upper function area: accessibility tools, language switcher, site map, and primary navigation.",
+      "central": "Main content area: the primary content of each page.",
+      "footer": "Footer area: contact information and footer navigation."
+    },
+    "accessKeysHeading": "Access key settings",
+    "accessKeysIntroduction": "The following access keys are available:",
+    "accessKeysSeparator": ":",
+    "accessKeys": {
+      "upper": "Move to the upper function area.",
+      "central": "Move to the main content area.",
+      "footer": "Move to the footer area.",
+      "tab": "Move to the next interactive item."
+    },
+    "browserNote": "In Firefox, use Shift+Alt+the access key. On macOS, use Control+Option+the access key, depending on the browser.",
+    "mainFunctionsHeading": "Main features",
+    "complianceRegistry": "Online Compliance Registry",
+    "linkDescriptions": {
+      "page": "Go to the {label} page",
+      "section": "Go to the {label} section"
+    },
+    "label": "Main site feature links"
+  },
+  "complianceRegistry": {
+    "eyebrow": "SEMI E187 COMPLIANCE",
+    "title": "Certificate Management",
+    "introduction": "Search and manage E187 electronic certificates, versions, and processing status.",
+    "searchLabel": "Certificate number",
+    "searchPlaceholder": "Search certificate number",
+    "certificateStatusLabel": "Certificate status",
+    "workflowStatusLabel": "Workflow status",
+    "allStatuses": "All statuses",
+    "query": "Search",
+    "reset": "Reset",
+    "results": "{count} records",
+    "tableCaption": "SEMI E187 compliance certificate registry",
+    "noResults": "No certificates match the selected criteria.",
+    "view": "View",
+    "close": "Close",
+    "detailEyebrow": "Certificate details",
+    "columns": {
+      "number": "Certificate number",
+      "version": "Current version",
+      "issuedOn": "Issue date",
+      "expiresOn": "Expiry date",
+      "certificateStatus": "Certificate status",
+      "workflowStatus": "Workflow status",
+      "actions": "Actions"
+    },
+    "certificateStatuses": {
+      "notEffective": "Not yet effective"
+    },
+    "workflowStatuses": {
+      "processing": "Document processing",
+      "failed": "Processing failed",
+      "none": "-",
+      "pendingAssignment": "Identity confirmation pending"
+    }
   },
   "contact": {
     "headingFallback": "SEMI E187 compliance inquiries",

@@ -9,6 +9,7 @@ import {
 } from '~/utils/accessibility';
 
 const { locale, t } = useI18n();
+const localePath = useLocalePath();
 const switchLocalePath = useSwitchLocalePath();
 const fontScale = ref<FontScale>('default');
 
@@ -75,25 +76,36 @@ onMounted(() => {
         </button>
       </div>
 
-      <div
-        class="accessibility-toolbar__locales"
-        role="group"
-        :aria-label="t('language.label')"
-      >
+      <div class="accessibility-toolbar__links">
         <NuxtLink
-          :to="switchLocalePath('zh-tw')"
-          :lang="getLanguageLinkLang(locale, 'zh-tw')"
-          :aria-current="locale === 'zh-tw' ? 'page' : undefined"
+          class="accessibility-toolbar__sitemap"
+          :to="localePath('/sitemap/')"
         >
-          {{ t('language.traditionalChinese') }}
+          {{ t('navigation.siteMap') }}
         </NuxtLink>
-        <NuxtLink
-          :to="switchLocalePath('en')"
-          :lang="getLanguageLinkLang(locale, 'en')"
-          :aria-current="locale === 'en' ? 'page' : undefined"
+        <span class="accessibility-toolbar__separator" aria-hidden="true"
+          >|</span
         >
-          {{ t('language.english') }}
-        </NuxtLink>
+        <div
+          class="accessibility-toolbar__locales"
+          role="group"
+          :aria-label="t('language.label')"
+        >
+          <NuxtLink
+            :to="switchLocalePath('zh-tw')"
+            :lang="getLanguageLinkLang(locale, 'zh-tw')"
+            :aria-current="locale === 'zh-tw' ? 'page' : undefined"
+          >
+            {{ t('language.traditionalChinese') }}
+          </NuxtLink>
+          <NuxtLink
+            :to="switchLocalePath('en')"
+            :lang="getLanguageLinkLang(locale, 'en')"
+            :aria-current="locale === 'en' ? 'page' : undefined"
+          >
+            {{ t('language.english') }}
+          </NuxtLink>
+        </div>
       </div>
     </div>
   </aside>

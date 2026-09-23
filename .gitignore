@@ -4,6 +4,9 @@
 *.swp
 *.retry
 .env
+.env.*
+!.env.example
+!**/.env.example
 .idea
 .vscode
 *~
@@ -14,7 +17,10 @@ common/CACHE
 bakerydemo/settings/local.py
 bakerydemodb
 bakerydemodb.before-*
+bakerydemodb.backup-*
 *.db
+*.dump
+*.pgdump
 node_modules
 venv
 .venv
@@ -22,6 +28,7 @@ venv
 .codex-tmp/
 .vs/
 artifacts/
+nuxt-bakery-demo/dist/
 __pycache__
 .vagrant/
 /.vagrant/

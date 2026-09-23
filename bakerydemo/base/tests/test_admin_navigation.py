@@ -11,7 +11,7 @@ from wagtail.models import Site
 from wagtail.users.models import UserProfile
 
 from bakerydemo.account_security.services import sync_password_change
-from bakerydemo.base.models import StandardPage
+from bakerydemo.base.models import HomePage, StandardPage
 
 
 class AdminMessageTemplateTests(SimpleTestCase):
@@ -35,6 +35,20 @@ class AdminMessageTemplateTests(SimpleTestCase):
                 self.assertIn("Page published successfully.", html)
                 self.assertNotIn("/view-live/", html)
                 self.assertIn("/edit/", html)
+
+
+class AdminPagePanelTests(SimpleTestCase):
+    def test_semi_page_types_only_expose_search_engine_promote_fields(self):
+        expected_field_names = ["slug", "seo_title", "search_description"]
+
+        for page_model in (HomePage, StandardPage):
+            with self.subTest(page_model=page_model.__name__):
+                field_names = [
+                    panel.field_name
+                    for group in page_model.promote_panels
+                    for panel in group.children
+                ]
+                self.assertEqual(field_names, expected_field_names)
 
 
 class AdminNavigationTests(TestCase):
@@ -253,6 +267,17 @@ class AdminNavigationTests(TestCase):
         self.assertNotContains(response, 'name="action-submit"')
         self.assertContains(response, 'name="action-publish"')
 
+    def test_page_editor_hides_show_in_menus_but_keeps_search_fields(self):
+        response = self.client.get(
+            reverse("wagtailadmin_pages:edit", args=[self.page.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'name="show_in_menus"')
+        self.assertContains(response, 'name="slug"')
+        self.assertContains(response, 'name="seo_title"')
+        self.assertContains(response, 'name="search_description"')
+
     def test_page_listing_hides_view_live_action(self):
         response = self.client.get(
             reverse("wagtailadmin_explore", args=[self.page.get_parent().id])
@@ -330,6 +355,16 @@ class AdminNavigationTests(TestCase):
         )
         self.assertContains(response, "data-admin-branding-removed")
         self.assertNotContains(response, "wagtailadmin/images/favicon.ico")
+
+    def test_admin_home_hides_wagtail_upgrade_notification(self):
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            'data-controller="w-upgrade w-dismissible"',
+        )
+        self.assertNotContains(response, "Wagtail upgrade available")
 
     def test_admin_home_hides_editor_guide_but_keeps_account_link(self):
         response = self.client.get(reverse("wagtailadmin_home"))

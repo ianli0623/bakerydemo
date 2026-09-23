@@ -30,9 +30,12 @@ export function resolveMediaUrl(
 export function resolvePayloadMediaUrls(
   value: unknown,
   baseUrl: string,
+  preserveRelativeMediaUrls = false,
 ): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => resolvePayloadMediaUrls(item, baseUrl));
+    return value.map((item) =>
+      resolvePayloadMediaUrls(item, baseUrl, preserveRelativeMediaUrls),
+    );
   }
 
   if (typeof value !== 'object' || value === null) {
@@ -43,7 +46,7 @@ export function resolvePayloadMediaUrls(
   const normalized = Object.fromEntries(
     Object.entries(source).map(([key, item]) => [
       key,
-      resolvePayloadMediaUrls(item, baseUrl),
+      resolvePayloadMediaUrls(item, baseUrl, preserveRelativeMediaUrls),
     ]),
   );
 
@@ -54,7 +57,10 @@ export function resolvePayloadMediaUrls(
     typeof normalized.height === 'number';
 
   if (isRendition) {
-    normalized.full_url = resolveMediaUrl(baseUrl, renditionUrl);
+    normalized.full_url =
+      preserveRelativeMediaUrls && renditionUrl.startsWith('/')
+        ? renditionUrl
+        : resolveMediaUrl(baseUrl, renditionUrl);
   }
 
   return normalized;

@@ -26,6 +26,8 @@ CACHES = {
 
 # Wagtail
 WAGTAILADMIN_BASE_URL = "http://localhost:8000"
+ACCOUNT_SECURITY_WEBAUTHN_RP_ID = "localhost"
+ACCOUNT_SECURITY_WEBAUTHN_ORIGIN = "http://localhost:8000"
 
 # Task queue configuration to ensure tasks run immediately in the test environment
 # https://docs.wagtail.org/en/stable/releases/6.4.html#background-tasks-run-at-end-of-current-transaction

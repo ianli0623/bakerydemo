@@ -24,6 +24,7 @@ class PasswordExpiryReportTests(TestCase):
     def create_staff_user(self, username, password_age_days):
         user = get_user_model().objects.create_user(
             username=username,
+            email=f"{username}@example.com",
             password="Current-Password-1!",
             is_staff=True,
         )
@@ -78,6 +79,25 @@ class PasswordExpiryReportTests(TestCase):
         self.assertNotContains(response, safe_user.username)
         self.assertNotContains(response, inactive_user.username)
         self.assertContains(response, "15 天")
+
+    def test_report_identifies_accounts_by_email_and_keeps_alias_visible(self):
+        user = self.create_staff_user("expiring-alias", 75)
+        user.first_name = "Legacy"
+        user.last_name = "Name"
+        user.save(update_fields=["first_name", "last_name"])
+
+        response = self.client.get(
+            reverse("account_security_password_expiry_report"),
+            HTTP_ACCEPT_LANGUAGE="en",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Email (account ID)")
+        self.assertContains(response, "Alias / display name")
+        self.assertContains(response, user.email)
+        self.assertContains(response, user.username)
+        self.assertNotContains(response, "Legacy Name")
+        self.assertNotContains(response, ">Username<")
 
     def test_report_rejects_non_superusers(self):
         editor = self.create_staff_user("regular-editor", 75)

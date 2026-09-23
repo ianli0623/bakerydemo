@@ -62,6 +62,15 @@ const footerLogo = computed(() =>
     <AccessibilityToolbar />
 
     <header class="site-header">
+      <a
+        id="accesskey-u"
+        class="accesskey-marker accesskey-marker--upper"
+        href="#accesskey-u"
+        accesskey="U"
+        :title="t('accessibility.upperRegion')"
+        :aria-label="t('accessibility.upperRegion')"
+        >:::</a
+      >
       <div class="site-header-inner">
         <NuxtLink
           class="brand"
@@ -123,6 +132,18 @@ const footerLogo = computed(() =>
           >
             {{ t('navigation.contact') }}
           </a>
+          <NuxtLink
+            class="nav-link nav-sitemap"
+            :to="localePath('/sitemap/')"
+            :aria-current="
+              isNavigationItemActive(localePath('/sitemap/'), route.path)
+                ? 'page'
+                : undefined
+            "
+            @click="closeNavigation('route')"
+          >
+            {{ t('navigation.siteMap') }}
+          </NuxtLink>
           <div
             class="mobile-language-switch"
             role="group"
@@ -153,9 +174,28 @@ const footerLogo = computed(() =>
       </div>
     </header>
 
+    <a
+      id="accesskey-c"
+      class="accesskey-marker accesskey-marker--content"
+      href="#main-content"
+      accesskey="C"
+      :title="t('accessibility.centralRegion')"
+      :aria-label="t('accessibility.centralRegion')"
+      >:::</a
+    >
+
     <NuxtPage />
 
     <footer id="contact" class="site-footer" aria-labelledby="contact-heading">
+      <a
+        id="accesskey-z"
+        class="accesskey-marker accesskey-marker--footer"
+        href="#contact-heading"
+        accesskey="Z"
+        :title="t('accessibility.footerRegion')"
+        :aria-label="t('accessibility.footerRegion')"
+        >:::</a
+      >
       <div class="footer-accent" aria-hidden="true" />
       <div class="footer-inner">
         <div class="footer-introduction">
@@ -209,12 +249,9 @@ const footerLogo = computed(() =>
               'SEMI E187'
             }}
           </p>
-          <nav
-            v-if="settings?.navigation.length"
-            :aria-label="t('navigation.footer')"
-          >
+          <nav :aria-label="t('navigation.footer')">
             <NuxtLink
-              v-for="item in settings.navigation"
+              v-for="item in settings?.navigation || []"
               :key="item.id"
               :to="localePath(item.slug ? `/${item.slug}/` : '/')"
               :aria-current="
@@ -224,6 +261,9 @@ const footerLogo = computed(() =>
               "
             >
               {{ getNavigationItemLabel(item, t('navigation.home')) }}
+            </NuxtLink>
+            <NuxtLink :to="localePath('/sitemap/')">
+              {{ t('navigation.siteMap') }}
             </NuxtLink>
           </nav>
         </div>

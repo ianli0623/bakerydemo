@@ -58,6 +58,20 @@ function disabledLink(label: string): LinkPresentation {
   return { kind: 'disabled', label };
 }
 
+const complianceRegistryLabels = new Set([
+  '線上合規名冊查詢',
+  'Online Compliance Registry',
+  'Online Compliance Registry Search',
+  'Search the Online Compliance Register',
+]);
+
+function appRouteForDisabledLink(label: string): string | null {
+  const normalizedLabel = label.trim().replace(/\s*→\s*$/u, '');
+  return complianceRegistryLabels.has(normalizedLabel)
+    ? '/compliance-registry/'
+    : null;
+}
+
 function isSafeInternalHref(href: string): boolean {
   if (!href.startsWith('/') || href.startsWith('//') || href.includes('\\')) {
     return false;
@@ -89,6 +103,17 @@ export function getLinkPresentation(
   const href = link.href?.trim() ?? '';
   const resolvePath =
     typeof localizePath === 'function' ? localizePath : (path: string) => path;
+
+  if (link.kind === 'disabled') {
+    const appRoute = appRouteForDisabledLink(link.label);
+    if (appRoute) {
+      return {
+        kind: 'internal',
+        to: resolvePath(appRoute),
+        label: link.label,
+      };
+    }
+  }
 
   if (link.kind === 'internal' && isSafeInternalHref(href)) {
     return { kind: 'internal', to: resolvePath(href), label: link.label };

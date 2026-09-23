@@ -5,6 +5,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "export:static": "node scripts/export-static.mjs",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
     "test": "node --test --experimental-strip-types tests/*.test.ts",

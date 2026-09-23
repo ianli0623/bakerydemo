@@ -1,3 +1,12 @@
+import { getStaticPrerenderOptions } from './shared/utils/locale.ts';
+
+const nodeProcess = Reflect.get(globalThis, 'process') as
+  | { env?: Record<string, string | undefined> }
+  | undefined;
+const staticPrerenderOptions = getStaticPrerenderOptions(
+  nodeProcess?.env?.NUXT_STATIC_EXPORT === 'true',
+);
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-21',
   css: ['~/assets/css/main.css'],
@@ -6,6 +15,10 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   runtimeConfig: {
     bakeryBaseUrl: '',
+    staticExport: false,
+  },
+  nitro: {
+    prerender: staticPrerenderOptions,
   },
   i18n: {
     strategy: 'prefix',

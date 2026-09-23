@@ -10,12 +10,13 @@ from django.contrib.auth.password_validation import (
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.forms.auth import LoginForm as WagtailLoginForm
-from wagtail.users.forms import UserCreationForm
+from wagtail.users.forms import UserCreationForm, UserEditForm
 
+from .authentication import normalize_account_email
 from .services import set_user_password
 
 GENERIC_LOGIN_ERROR = _(
-    "The username or password is incorrect, or this account is temporarily unavailable."
+    "The email address or password is incorrect, or this account is temporarily unavailable."
 )
 
 TEMPORARY_PASSWORD_LENGTH = 20
@@ -47,24 +48,117 @@ def generate_temporary_password(user):
         return password
 
 
-class TemporaryPasswordUserCreationForm(UserCreationForm):
+class AccountIdentityFormMixin:
+    duplicate_email_message = _("A user with this email address already exists.")
+
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].label = _("Alias / display name")
+        self.fields["username"].help_text = _(
+            "Used only for display. Sign-in uses the email account ID."
+        )
+        self.fields["email"].label = _("Email (account ID)")
+        self.fields["email"].widget = forms.EmailInput(
+            attrs={"autocomplete": "username"}
+        )
+        self.fields.pop("first_name", None)
+        self.fields.pop("last_name", None)
+
+    def clean_email(self):
+        email = normalize_account_email(self.cleaned_data["email"])
+        users = self._meta.model._default_manager.filter(email__iexact=email)
+        if self.instance.pk:
+            users = users.exclude(pk=self.instance.pk)
+        if users.exists():
+            raise ValidationError(
+                self.duplicate_email_message,
+                code="duplicate_email",
+            )
+        return email
+
+
+class TemporaryPasswordUserCreationForm(AccountIdentityFormMixin, UserCreationForm):
+    AUTHENTICATION_METHOD_WINDOWS_HELLO = "windows_hello"
+    AUTHENTICATION_METHOD_TEMPORARY_PASSWORD = "temporary_password"
+
+    authentication_method = forms.ChoiceField(
+        label=_("Authentication method"),
+        choices=(
+            (
+                AUTHENTICATION_METHOD_WINDOWS_HELLO,
+                _("Windows Hello (passwordless)"),
+            ),
+            (
+                AUTHENTICATION_METHOD_TEMPORARY_PASSWORD,
+                _("Temporary password"),
+            ),
+        ),
+        initial=AUTHENTICATION_METHOD_WINDOWS_HELLO,
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.for_user = kwargs.pop("for_user", None)
         super().__init__(*args, **kwargs)
         del self.fields["password1"]
         del self.fields["password2"]
+        if not self.for_user or not self.for_user.is_superuser:
+            self.fields["authentication_method"].choices = (
+                (
+                    self.AUTHENTICATION_METHOD_TEMPORARY_PASSWORD,
+                    _("Temporary password"),
+                ),
+            )
+            self.fields[
+                "authentication_method"
+            ].initial = self.AUTHENTICATION_METHOD_TEMPORARY_PASSWORD
 
     def save(self, commit=True):
         user = forms.ModelForm.save(self, commit=False)
-        self.temporary_password = generate_temporary_password(user)
-        user.set_password(self.temporary_password)
+        user.is_staff = True
+        authentication_method = self.cleaned_data["authentication_method"]
+        self.temporary_password = None
+        if authentication_method == self.AUTHENTICATION_METHOD_WINDOWS_HELLO:
+            user.set_unusable_password()
+        else:
+            self.temporary_password = generate_temporary_password(user)
+            user.set_password(self.temporary_password)
 
         if commit:
             user.save()
             self.save_m2m()
         return user
 
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("is_superuser") and not cleaned_data.get("groups"):
+            self.add_error(
+                "groups",
+                ValidationError(
+                    _("Select at least one group or grant administrator access."),
+                    code="required_role",
+                ),
+            )
+        return cleaned_data
 
-class SecurityAdminAuthenticationForm(AuthenticationForm):
+
+class SecureUserEditForm(AccountIdentityFormMixin, UserEditForm):
+    pass
+
+
+class EmailLoginFormMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].label = _("Email")
+        self.fields["username"].widget = forms.EmailInput(
+            attrs={
+                "autocomplete": "username",
+                "autofocus": "",
+                "placeholder": _("Enter your email address"),
+            }
+        )
+
+
+class SecurityAdminAuthenticationForm(EmailLoginFormMixin, AuthenticationForm):
     error_messages = {
         **AuthenticationForm.error_messages,
         "invalid_login": GENERIC_LOGIN_ERROR,
@@ -72,7 +166,7 @@ class SecurityAdminAuthenticationForm(AuthenticationForm):
     }
 
 
-class SecurityWagtailLoginForm(WagtailLoginForm):
+class SecurityWagtailLoginForm(EmailLoginFormMixin, WagtailLoginForm):
     error_messages = {
         **WagtailLoginForm.error_messages,
         "invalid_login": GENERIC_LOGIN_ERROR,

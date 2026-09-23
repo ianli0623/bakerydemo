@@ -1,0 +1,35 @@
+{% extends "wagtailadmin/login.html" %}
+{% load i18n static %}
+
+{% block branding_login %}{% translate "Sign in with Windows Hello" %}{% endblock %}
+
+{% block login_form %}
+    {% csrf_token %}
+    <p>{% translate "Use Windows Hello on this computer to sign in without entering an email address or password." %}</p>
+    <button
+        class="button button-longrunning"
+        type="button"
+        data-passkey-authentication
+        data-options-url="{% url 'account_security:passkey_authentication_options' %}"
+        data-verify-url="{% url 'account_security:passkey_authentication_verify' %}"
+        data-success-url="{% url 'wagtailadmin_home' %}"
+        data-unsupported-message="{% translate 'This browser does not support Windows Hello.' %}"
+        data-waiting-message="{% translate 'Waiting for Windows Hello…' %}"
+        data-cancelled-message="{% translate 'Windows Hello was cancelled or timed out.' %}"
+        data-error-message="{% translate 'Windows Hello sign-in could not be completed. Please try again.' %}"
+    >
+        {% translate "Continue with Windows Hello" %}
+    </button>
+    <p role="status" aria-live="polite" data-passkey-status></p>
+    <script src="{% static 'account_security/passkeys.js' %}"></script>
+{% endblock %}
+
+{% block submit_buttons %}{% endblock %}
+
+{% block below_login %}
+    <p>
+        <a href="{% url 'wagtailadmin_login' %}">
+            {% translate "Sign in with an email address and password instead" %}
+        </a>
+    </p>
+{% endblock %}
