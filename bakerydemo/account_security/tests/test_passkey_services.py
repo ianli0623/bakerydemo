@@ -24,6 +24,7 @@ class PasskeyEnrolmentServiceTests(TestCase):
         )
         self.user = get_user_model().objects.create_user(
             username="hello-user",
+            email="hello.user@example.com",
             is_staff=True,
         )
 
@@ -81,9 +82,22 @@ class PasskeyEnrolmentServiceTests(TestCase):
             disable_password_on_success=True,
         )
 
-        result = validate_enrolment(self.user.username, raw_code)
+        result = validate_enrolment(self.user.email, raw_code)
 
         self.assertEqual(result, enrolment)
+
+    def test_validate_enrolment_uses_email_and_rejects_display_alias(self):
+        enrolment, raw_code = create_enrolment(
+            self.user,
+            self.admin,
+            disable_password_on_success=True,
+        )
+
+        self.assertEqual(
+            validate_enrolment("HELLO.USER@example.com", raw_code),
+            enrolment,
+        )
+        self.assertIsNone(validate_enrolment(self.user.username, raw_code))
 
     def test_validate_enrolment_rejects_expired_code(self):
         enrolment, raw_code = create_enrolment(
@@ -93,7 +107,7 @@ class PasskeyEnrolmentServiceTests(TestCase):
         )
 
         result = validate_enrolment(
-            self.user.username,
+            self.user.email,
             raw_code,
             at=enrolment.expires_at,
         )
@@ -109,7 +123,7 @@ class PasskeyEnrolmentServiceTests(TestCase):
         consumed.consumed_at = timezone.now()
         consumed.save(update_fields=["consumed_at"])
 
-        self.assertIsNone(validate_enrolment(self.user.username, consumed_code))
+        self.assertIsNone(validate_enrolment(self.user.email, consumed_code))
 
         revoked, revoked_code = create_enrolment(
             self.user,
@@ -119,7 +133,7 @@ class PasskeyEnrolmentServiceTests(TestCase):
         revoked.revoked_at = timezone.now()
         revoked.save(update_fields=["revoked_at"])
 
-        self.assertIsNone(validate_enrolment(self.user.username, revoked_code))
+        self.assertIsNone(validate_enrolment(self.user.email, revoked_code))
 
     def test_validate_enrolment_rejects_wrong_user_or_code(self):
         _, raw_code = create_enrolment(
@@ -128,8 +142,8 @@ class PasskeyEnrolmentServiceTests(TestCase):
             disable_password_on_success=True,
         )
 
-        self.assertIsNone(validate_enrolment("missing-user", raw_code))
-        self.assertIsNone(validate_enrolment(self.user.username, "wrong-code"))
+        self.assertIsNone(validate_enrolment("missing@example.com", raw_code))
+        self.assertIsNone(validate_enrolment(self.user.email, "wrong-code"))
 
     def test_expiry_uses_configured_ttl(self):
         before = timezone.now()

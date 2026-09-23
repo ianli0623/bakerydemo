@@ -29,6 +29,7 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
 )
 
+from .authentication import normalize_account_email
 from .models import PasskeyAuditEvent, PasskeyCredential, PasskeyEnrolment
 from .services import get_security_state
 
@@ -71,13 +72,11 @@ def create_enrolment(user, created_by, *, disable_password_on_success):
     return enrolment, raw_code
 
 
-def validate_enrolment(username, raw_code, *, at=None):
+def validate_enrolment(email, raw_code, *, at=None):
     at = at or timezone.now()
     supplied_digest = _code_digest(raw_code)
-    username_field = get_user_model().USERNAME_FIELD
-    username_lookup = {f"user__{username_field}__iexact": username}
     candidates = PasskeyEnrolment.objects.filter(
-        **username_lookup,
+        user__email__iexact=normalize_account_email(email),
         consumed_at__isnull=True,
         revoked_at__isnull=True,
         expires_at__gt=at,
@@ -96,6 +95,9 @@ def validate_enrolment(username, raw_code, *, at=None):
 
 
 def build_registration_options(user):
+    account_email = normalize_account_email(user.email)
+    if not account_email:
+        raise PasskeyCeremonyError("missing_email")
     existing_credentials = [
         PublicKeyCredentialDescriptor(
             id=base64url_to_bytes(credential_id),
@@ -107,9 +109,9 @@ def build_registration_options(user):
     options = generate_registration_options(
         rp_id=settings.ACCOUNT_SECURITY_WEBAUTHN_RP_ID,
         rp_name=settings.ACCOUNT_SECURITY_WEBAUTHN_RP_NAME,
-        user_name=user.get_username(),
+        user_name=account_email,
         user_id=secrets.token_bytes(32),
-        user_display_name=user.get_full_name() or user.get_username(),
+        user_display_name=user.get_username() or account_email,
         authenticator_selection=AuthenticatorSelectionCriteria(
             authenticator_attachment=AuthenticatorAttachment.PLATFORM,
             resident_key=ResidentKeyRequirement.REQUIRED,

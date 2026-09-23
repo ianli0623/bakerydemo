@@ -21,11 +21,15 @@ class PasskeyManagementTests(TestCase):
         )
         self.staff = get_user_model().objects.create_user(
             username="staff",
+            email="staff@example.com",
             is_staff=True,
             password="Staff-Password-1!",
         )
         self.user = get_user_model().objects.create_user(
             username="hello-user",
+            email="hello.user@example.com",
+            first_name="Legacy",
+            last_name="Name",
             is_staff=True,
         )
         sync_password_change(self.admin, must_change_password=False)
@@ -58,7 +62,9 @@ class PasskeyManagementTests(TestCase):
         response = self.client.get(self.report_url)
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "hello.user@example.com")
         self.assertContains(response, "hello-user")
+        self.assertNotContains(response, "Legacy Name")
         self.assertContains(response, "Windows Hello 管理")
 
     def test_staff_user_cannot_view_or_mutate_passkeys(self):

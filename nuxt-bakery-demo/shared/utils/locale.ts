@@ -24,3 +24,24 @@ export function localizedPagePath(locale: BakeryLocale, slug = ''): string {
   const prefix = locale === 'en' ? '/en' : '/zh-tw';
   return slug ? `${prefix}/${slug}/` : `${prefix}/`;
 }
+
+export function getStaticSiteSeedRoutes(): string[] {
+  return [
+    '/',
+    localizedPagePath(DEFAULT_BAKERY_LOCALE),
+    localizedPagePath('zh-hant'),
+  ];
+}
+
+export function getStaticPrerenderOptions(staticExport: boolean) {
+  if (!staticExport) {
+    return undefined;
+  }
+
+  return {
+    routes: getStaticSiteSeedRoutes(),
+    crawlLinks: true,
+    concurrency: 1,
+    failOnError: true,
+  };
+}

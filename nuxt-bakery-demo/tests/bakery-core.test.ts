@@ -154,6 +154,29 @@ test('fetchBakery normalizes relative rendition URLs in API responses', async ()
   );
 });
 
+test('static export keeps media URLs relative to the exported website', async () => {
+  const result = await fetchBakery<{
+    rendition: {
+      url: string;
+      full_url?: string;
+      width: number;
+      height: number;
+    };
+  }>({} as H3Event, '/api/v2/pages/60/', undefined, {
+    baseUrl: 'http://127.0.0.1:8000',
+    staticExport: true,
+    request: async () => ({
+      rendition: {
+        url: '/media/images/hero.jpg',
+        width: 1200,
+        height: 675,
+      },
+    }),
+  });
+
+  assert.equal(result.rendition.full_url, '/media/images/hero.jpg');
+});
+
 test('fetchBakery reports invalid config as 500 and upstream failures as 502', async () => {
   await assert.rejects(
     fetchBakery({} as H3Event, '/api/v2/pages/', undefined, {

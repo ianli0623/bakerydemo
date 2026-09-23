@@ -143,7 +143,11 @@ def _reject_passkey_login(request, credential_id, reason):
 
 
 class PasskeyEnrolmentForm(forms.Form):
-    username = forms.CharField(label=_("Username"), max_length=150)
+    email = forms.EmailField(
+        label=_("Email (account ID)"),
+        max_length=254,
+        widget=forms.EmailInput(attrs={"autocomplete": "username"}),
+    )
     enrolment_code = forms.CharField(
         label=_("Windows Hello enrolment code"),
         max_length=128,
@@ -162,7 +166,7 @@ def passkey_enrol(request):
     form = PasskeyEnrolmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         enrolment = validate_enrolment(
-            form.cleaned_data["username"],
+            form.cleaned_data["email"],
             form.cleaned_data["enrolment_code"],
         )
         if (
@@ -320,7 +324,7 @@ def passkey_registration_verify(request):
     login(
         request,
         enrolment.user,
-        backend="django.contrib.auth.backends.ModelBackend",
+        backend="bakerydemo.account_security.authentication.EmailAuthenticationBackend",
     )
     return JsonResponse({"redirect": reverse("wagtailadmin_home")})
 
@@ -411,7 +415,7 @@ def passkey_authentication_verify(request):
     login(
         request,
         credential.user,
-        backend="django.contrib.auth.backends.ModelBackend",
+        backend="bakerydemo.account_security.authentication.EmailAuthenticationBackend",
     )
     return JsonResponse({"redirect": reverse("wagtailadmin_home")})
 
@@ -428,7 +432,7 @@ def _passkey_management_context(*, enrolment_code=None, enrolment_user=None):
     users = (
         user_model.objects.filter(is_staff=True)
         .prefetch_related("passkey_credentials", "passkey_enrolments")
-        .order_by(user_model.USERNAME_FIELD)
+        .order_by("email")
     )
     for user in users:
         active_credentials = [

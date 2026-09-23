@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from webauthn.helpers import bytes_to_base64url
@@ -24,6 +24,37 @@ PASSKEY_SETTINGS = {
 
 
 @override_settings(**PASSKEY_SETTINGS)
+class PasskeyEnrolmentTemplateTests(SimpleTestCase):
+    @patch(
+        "wagtail.admin.templatetags.wagtailadmin_tags.Locale.objects.all",
+        return_value=[],
+    )
+    def test_enrolment_form_submits_back_to_enrolment_view(self, _locales):
+        enrol_url = reverse("account_security:passkey_enrol")
+
+        response = self.client.get(enrol_url)
+
+        rendered_html = response.content.decode()
+        self.assertEqual(rendered_html.count("<form"), 1)
+        self.assertContains(response, f'formaction="{enrol_url}"')
+
+    @patch(
+        "wagtail.admin.templatetags.wagtailadmin_tags.Locale.objects.all",
+        return_value=[],
+    )
+    def test_enrolment_page_links_to_password_login_instead_of_itself(
+        self,
+        _locales,
+    ):
+        response = self.client.get(reverse("account_security:passkey_enrol"))
+
+        password_login_url = reverse("wagtailadmin_login")
+        self.assertContains(response, f'href="{password_login_url}"')
+        self.assertContains(response, "使用 Email 及密碼登入")
+        self.assertNotContains(response, "註冊 Windows Hello")
+
+
+@override_settings(**PASSKEY_SETTINGS)
 class PasskeyRegistrationServiceTests(TestCase):
     def setUp(self):
         self.admin = get_user_model().objects.create_superuser(
@@ -33,6 +64,9 @@ class PasskeyRegistrationServiceTests(TestCase):
         )
         self.user = get_user_model().objects.create_user(
             username="hello-user",
+            email="hello.user@example.com",
+            first_name="Hello",
+            last_name="User",
             is_staff=True,
             password="Temporary-Password-1!",
         )
@@ -54,6 +88,12 @@ class PasskeyRegistrationServiceTests(TestCase):
             "required",
         )
         self.assertEqual(len(options["user"]["id"]), 43)
+
+    def test_options_use_email_as_account_id_and_alias_as_display_text(self):
+        options = json.loads(build_registration_options(self.user))
+
+        self.assertEqual(options["user"]["name"], "hello.user@example.com")
+        self.assertEqual(options["user"]["displayName"], "hello-user")
 
     def test_options_exclude_active_existing_credentials(self):
         PasskeyCredential.objects.create(
@@ -124,6 +164,7 @@ class PasskeyEnrolmentViewTests(TestCase):
         )
         self.user = get_user_model().objects.create_user(
             username="hello-user",
+            email="hello.user@example.com",
             is_staff=True,
         )
         self.enrolment, self.raw_code = create_enrolment(
@@ -136,7 +177,19 @@ class PasskeyEnrolmentViewTests(TestCase):
     def _validate_code(self):
         return self.client.post(
             self.enrol_url,
-            {"username": self.user.username, "enrolment_code": self.raw_code},
+            {"email": self.user.email, "enrolment_code": self.raw_code},
+        )
+
+    def test_enrolment_code_is_bound_to_email_not_display_alias(self):
+        response = self.client.post(
+            self.enrol_url,
+            {"email": "HELLO.USER@example.com", "enrolment_code": self.raw_code},
+        )
+
+        self.assertTrue(response.context["registration_ready"])
+        self.assertEqual(
+            self.client.session["account_security_passkey_enrolment_id"],
+            self.enrolment.pk,
         )
 
     def test_enrolment_page_does_not_require_login(self):
@@ -159,7 +212,7 @@ class PasskeyEnrolmentViewTests(TestCase):
     def test_invalid_and_expired_codes_use_same_error(self):
         invalid = self.client.post(
             self.enrol_url,
-            {"username": self.user.username, "enrolment_code": "wrong"},
+            {"email": self.user.email, "enrolment_code": "wrong"},
         )
         self.enrolment.expires_at = timezone.now()
         self.enrolment.save(update_fields=["expires_at"])
@@ -204,7 +257,7 @@ class PasskeyEnrolmentViewTests(TestCase):
 
         response = self.client.post(
             self.enrol_url,
-            {"username": self.user.username, "enrolment_code": "wrong"},
+            {"email": self.user.email, "enrolment_code": "wrong"},
         )
 
         self.assertEqual(response.status_code, 200)

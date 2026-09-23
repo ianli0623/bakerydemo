@@ -18,7 +18,7 @@ def lockout_response(
     **kwargs,
 ):
     message = _(
-        "The username or password is incorrect, or this account is temporarily unavailable."
+        "The email address or password is incorrect, or this account is temporarily unavailable."
     )
     response = render(
         request,

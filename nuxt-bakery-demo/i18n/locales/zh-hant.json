@@ -5,7 +5,10 @@
     "fontSize": "字級",
     "fontSmaller": "縮小字級",
     "fontReset": "還原字級",
-    "fontLarger": "放大字級"
+    "fontLarger": "放大字級",
+    "upperRegion": "上方功能區塊",
+    "centralRegion": "中央內容區塊",
+    "footerRegion": "下方功能區塊"
   },
   "language": {
     "label": "語言",
@@ -18,7 +21,73 @@
     "closeMenu": "關閉選單",
     "home": "首頁",
     "contact": "聯絡我們",
+    "siteMap": "網站導覽",
     "footer": "頁尾導覽"
+  },
+  "siteMap": {
+    "eyebrow": "SITEMAP",
+    "title": "網站導覽",
+    "introduction": "本頁提供網站區域、快速鍵及主要功能的完整導覽。",
+    "regionsHeading": "網站區域說明",
+    "regionsIntroduction": "本網站依無障礙網頁設計原則建置，主要內容分為三大區塊：",
+    "regions": {
+      "upper": "上方功能區塊：包含網站輔助工具、語言切換、網站導覽及主要選單。",
+      "central": "中央內容區塊：呈現各頁面的主要內容。",
+      "footer": "下方功能區塊：包含聯絡資訊與頁尾導覽。"
+    },
+    "accessKeysHeading": "快速鍵（Accesskey）設定",
+    "accessKeysIntroduction": "本網站的快速鍵設定如下：",
+    "accessKeysSeparator": "：",
+    "accessKeys": {
+      "upper": "移至上方功能區塊。",
+      "central": "移至中央主要內容區塊。",
+      "footer": "移至下方功能區塊。",
+      "tab": "依序移至下一個可操作項目。"
+    },
+    "browserNote": "使用 Firefox 時，請按 Shift+Alt+快速鍵字母；macOS 請依瀏覽器使用 Control+Option+快速鍵字母。",
+    "mainFunctionsHeading": "主要功能列",
+    "complianceRegistry": "線上合規名冊查詢",
+    "linkDescriptions": {
+      "page": "前往「{label}」頁面",
+      "section": "前往「{label}」區塊"
+    },
+    "label": "網站主要功能連結"
+  },
+  "complianceRegistry": {
+    "eyebrow": "SEMI E187 COMPLIANCE",
+    "title": "證書管理",
+    "introduction": "查詢及管理 E187 電子證書、版本與處理狀態。",
+    "searchLabel": "證書號碼",
+    "searchPlaceholder": "搜尋證書號碼",
+    "certificateStatusLabel": "證書狀態",
+    "workflowStatusLabel": "作業進度",
+    "allStatuses": "全部狀態",
+    "query": "查詢",
+    "reset": "重設",
+    "results": "共 {count} 筆資料",
+    "tableCaption": "SEMI E187 合規證書名冊",
+    "noResults": "找不到符合條件的證書。",
+    "view": "查看",
+    "close": "關閉",
+    "detailEyebrow": "證書資料",
+    "columns": {
+      "number": "證書號碼",
+      "version": "目前版本",
+      "issuedOn": "發證日",
+      "expiresOn": "到期日",
+      "certificateStatus": "證書狀態",
+      "workflowStatus": "作業進度",
+      "actions": "操作"
+    },
+    "certificateStatuses": {
+      "notEffective": "尚未生效"
+    },
+    "workflowStatuses": {
+      "processing": "文件處理中",
+      "failed": "處理失敗",
+      "none": "-",
+      "pendingAssignment": "待身分確認"
+    }
   },
   "contact": {
     "headingFallback": "SEMI E187 合規諮詢",

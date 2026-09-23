@@ -8,3 +8,7 @@ venv
 # Files which contain incompatible syntax.
 *.html
 bakerydemo/collect_static
+artifacts
+**/.nuxt
+**/.output
+nuxt-bakery-demo/dist

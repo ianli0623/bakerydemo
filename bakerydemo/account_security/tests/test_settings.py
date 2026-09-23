@@ -28,6 +28,8 @@ print(json.dumps({{
     "passkey_cache_ignore_exceptions": getattr(s, "CACHES", {{}}).get(
         getattr(s, "ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS", "default"), {{}}
     ).get("OPTIONS", {{}}).get("IGNORE_EXCEPTIONS"),
+    "database_engine": s.DATABASES["default"]["ENGINE"],
+    "postgres_app": "django.contrib.postgres" in s.INSTALLED_APPS,
 }}))
 '''
         environment = os.environ.copy()
@@ -103,3 +105,15 @@ print(json.dumps({{
                 self.assertFalse(local["session"])
                 self.assertFalse(local["csrf"])
                 self.assertFalse(local["production_checks"])
+
+    def test_postgresql_database_url_enables_django_postgres_app(self):
+        settings = self._read_settings(
+            "bakerydemo.settings.dev",
+            {"DATABASE_URL": ("postgresql://example:secret@localhost:5432/example")},
+        )
+
+        self.assertEqual(
+            settings["database_engine"],
+            "django.db.backends.postgresql",
+        )
+        self.assertTrue(settings["postgres_app"])

@@ -5,7 +5,7 @@
 
 {% block login_form %}
     {% csrf_token %}
-    <p>{% translate "Use Windows Hello on this computer to sign in without entering a username or password." %}</p>
+    <p>{% translate "Use Windows Hello on this computer to sign in without entering an email address or password." %}</p>
     <button
         class="button button-longrunning"
         type="button"
@@ -29,7 +29,7 @@
 {% block below_login %}
     <p>
         <a href="{% url 'wagtailadmin_login' %}">
-            {% translate "Sign in with a username and password instead" %}
+            {% translate "Sign in with an email address and password instead" %}
         </a>
     </p>
 {% endblock %}

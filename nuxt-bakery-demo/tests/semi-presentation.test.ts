@@ -8,6 +8,10 @@ import type {
 } from '../shared/types/bakery.ts';
 import * as sitePresentation from '../app/utils/site-presentation.ts';
 import {
+  complianceRegistryRecords,
+  filterComplianceRegistryRecords,
+} from '../app/utils/compliance-registry.ts';
+import {
   getContactLinks,
   getFooterLogoPresentation,
   getNavigationItemLabel,
@@ -50,6 +54,79 @@ test('navigation uses the localized interface label for the home item', () => {
   );
 });
 
+test('site map exposes the configured hierarchy and accessibility destinations', () => {
+  const getSiteMapItems = Reflect.get(sitePresentation, 'getSiteMapItems');
+
+  assert.equal(typeof getSiteMapItems, 'function');
+  assert.deepEqual(
+    getSiteMapItems(
+      [
+        { id: 1, title: 'SEMI E187', slug: '', path: '/zh-tw/' },
+        {
+          id: 2,
+          title: '認識標準',
+          slug: 'about',
+          path: '/zh-tw/about/',
+        },
+        {
+          id: 3,
+          title: '驗證與合規',
+          slug: 'certification',
+          path: '/zh-tw/certification/',
+        },
+      ],
+      '首頁',
+      '聯絡我們',
+      '網站導覽',
+      '線上合規名冊查詢',
+      (label: string, destination: 'page' | 'section') =>
+        destination === 'section'
+          ? `前往「${label}」區塊`
+          : `前往「${label}」頁面`,
+    ),
+    [
+      {
+        id: 'page-1',
+        label: '首頁',
+        path: '/',
+        description: '前往「首頁」頁面',
+      },
+      {
+        id: 'page-2',
+        label: '認識標準',
+        path: '/about/',
+        description: '前往「認識標準」頁面',
+      },
+      {
+        id: 'page-3',
+        label: '驗證與合規',
+        path: '/certification/',
+        description: '前往「驗證與合規」頁面',
+        children: [
+          {
+            id: 'compliance-registry',
+            label: '線上合規名冊查詢',
+            path: '/compliance-registry/',
+            description: '前往「線上合規名冊查詢」頁面',
+          },
+        ],
+      },
+      {
+        id: 'sitemap',
+        label: '網站導覽',
+        path: '/sitemap/',
+        description: '前往「網站導覽」頁面',
+      },
+      {
+        id: 'contact',
+        label: '聯絡我們',
+        path: '#contact',
+        description: '前往「聯絡我們」區塊',
+      },
+    ],
+  );
+});
+
 test('contact links use the settings phone href and email address', () => {
   const contact: BakerySiteSettings['contact'] = {
     heading: '聯絡窗口',
@@ -64,6 +141,45 @@ test('contact links use the settings phone href and email address', () => {
     phone: 'tel:+88631234567',
     email: 'mailto:semi@example.com',
   });
+});
+
+test('compliance registry exposes the 18 approved fixed sample records', () => {
+  assert.equal(complianceRegistryRecords.length, 18);
+  assert.deepEqual(complianceRegistryRecords[0], {
+    certificateNumber: '5555',
+    currentVersion: '-',
+    issuedOn: '2026/09/02',
+    expiresOn: '-',
+    certificateStatus: 'notEffective',
+    workflowStatus: 'processing',
+  });
+  assert.deepEqual(complianceRegistryRecords.at(-1), {
+    certificateNumber: '123456',
+    currentVersion: '-',
+    issuedOn: '2026/09/16',
+    expiresOn: '-',
+    certificateStatus: 'notEffective',
+    workflowStatus: 'pendingAssignment',
+  });
+});
+
+test('compliance registry filtering combines certificate text and statuses', () => {
+  assert.deepEqual(
+    filterComplianceRegistryRecords(complianceRegistryRecords, {
+      query: '  WWWW ',
+      certificateStatus: 'notEffective',
+      workflowStatus: 'failed',
+    }).map((record: { certificateNumber: string }) => record.certificateNumber),
+    ['wwwww'],
+  );
+  assert.deepEqual(
+    filterComplianceRegistryRecords(complianceRegistryRecords, {
+      query: '',
+      certificateStatus: '',
+      workflowStatus: 'pendingAssignment',
+    }).map((record: { certificateNumber: string }) => record.certificateNumber),
+    ['123456'],
+  );
 });
 
 test('empty contact values do not produce interactive links', () => {
@@ -225,12 +341,10 @@ test('about and certification use the legacy rich-text lead when introduction is
       value: { heading_text: '後續內容', size: 'h2' },
     } satisfies BakeryStreamBlock;
 
-    const page = standardPage(
-      scenario.slug,
-      'Original page title',
-      '',
-      [lead, content],
-    );
+    const page = standardPage(scenario.slug, 'Original page title', '', [
+      lead,
+      content,
+    ]);
     page.section_kicker = scenario.kicker;
     page.section_heading = scenario.title;
     const presentation = getStandardPagePresentation(scenario.slug, page);
@@ -268,12 +382,10 @@ test('an edited introduction takes precedence over the legacy lead paragraph', (
     type: 'heading_block',
     value: { heading_text: '後續內容', size: 'h2' },
   } satisfies BakeryStreamBlock;
-  const page = standardPage(
-    'about',
-    '認識標準',
-    '111111新的頁面介紹11111',
-    [legacyLead, content],
-  );
+  const page = standardPage('about', '認識標準', '111111新的頁面介紹11111', [
+    legacyLead,
+    content,
+  ]);
 
   const presentation = getStandardPagePresentation('about', page);
 

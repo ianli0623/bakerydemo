@@ -10,8 +10,56 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "localized site content"
+msgstr "多語系網站內容"
+
+msgid "simple translation"
+msgstr "簡易翻譯"
+
+msgid "Custom permissions"
+msgstr "自訂權限"
+
+msgid "Can publish"
+msgstr "可發佈"
+
+msgid "Can submit translations"
+msgstr "可提交翻譯"
+
+msgid "Toggle all"
+msgstr "全選／取消全選"
+
+msgid "Toggle all add permissions"
+msgstr "全選／取消全部新增權限"
+
+msgid "Toggle all change permissions"
+msgstr "全選／取消全部變更權限"
+
+msgid "Toggle all delete permissions"
+msgstr "全選／取消全部刪除權限"
+
+msgid "Toggle all custom permissions"
+msgstr "全選／取消全部自訂權限"
+
 msgid "The username or password is incorrect, or this account is temporarily unavailable."
 msgstr "帳號或密碼錯誤，或此帳號目前暫時無法登入。"
+
+msgid "The email address or password is incorrect, or this account is temporarily unavailable."
+msgstr "Email 或密碼錯誤，或此帳號目前暫時無法登入。"
+
+msgid "Alias / display name"
+msgstr "別名／姓名"
+
+msgid "Used only for display. Sign-in uses the email account ID."
+msgstr "僅供畫面顯示；登入時使用 Email 帳號 ID。"
+
+msgid "Email (account ID)"
+msgstr "Email（帳號 ID）"
+
+msgid "A user with this email address already exists."
+msgstr "已有使用者使用此 Email。"
+
+msgid "Enter your email address"
+msgstr "請輸入 Email"
 
 msgid "The password must contain at least 12 characters."
 msgstr "密碼至少必須包含 12 個字元。"
@@ -76,6 +124,14 @@ msgstr "使用者已建立"
 #, python-format
 msgid "User \"%(username)s\" was created successfully."
 msgstr "使用者「%(username)s」已成功建立。"
+
+#, python-format
+msgid "Account \"%(email)s\" was created successfully."
+msgstr "帳號「%(email)s」已成功建立。"
+
+#, python-format
+msgid "Display name: %(alias)s"
+msgstr "別名／姓名：%(alias)s"
 
 msgid "Copy this temporary password now. It will not be shown again."
 msgstr "請立即複製這組臨時密碼，離開此頁後將不再顯示。"
@@ -178,11 +234,23 @@ msgstr "使用 Windows Hello 登入"
 msgid "Use Windows Hello on this computer to sign in without entering a username or password."
 msgstr "使用這台電腦的 Windows Hello 登入，不必輸入帳號或密碼。"
 
+msgid "Use Windows Hello on this computer to sign in without entering an email address or password."
+msgstr "使用這台電腦的 Windows Hello 登入，不必輸入 Email 或密碼。"
+
 msgid "Continue with Windows Hello"
 msgstr "繼續使用 Windows Hello"
 
 msgid "Sign in with a username and password instead"
 msgstr "改用帳號及密碼登入"
+
+msgid "Sign in with an email address and password instead"
+msgstr "改用 Email 及密碼登入"
+
+msgid "Sign in with a username and password"
+msgstr "使用帳號密碼登入"
+
+msgid "Sign in with an email address and password"
+msgstr "使用 Email 及密碼登入"
 
 msgid "Windows Hello sign-in could not be completed. Please try again."
 msgstr "無法完成 Windows Hello 登入，請再試一次。"
@@ -196,6 +264,10 @@ msgstr "Windows Hello 登入憑證已撤銷。"
 #, python-format
 msgid "Copy the enrolment code for %(username)s now. It expires in 15 minutes and will not be shown again."
 msgstr "請立即複製 %(username)s 的註冊碼；註冊碼將於 15 分鐘後失效，且不會再次顯示。"
+
+#, python-format
+msgid "Copy the enrolment code for %(email)s now. It expires in 15 minutes and will not be shown again."
+msgstr "請立即複製 %(email)s 的註冊碼；註冊碼將於 15 分鐘後失效，且不會再次顯示。"
 
 msgid "Manage registered Windows Hello credentials and issue one-time enrolment codes for admin users."
 msgstr "管理已註冊的 Windows Hello 憑證，並為後台使用者產生一次性註冊碼。"
@@ -228,3 +300,6 @@ msgstr "產生註冊碼"
 
 msgid "No admin users were found."
 msgstr "找不到後台使用者。"
+
+msgid "Select at least one group or grant administrator access."
+msgstr "請至少選擇一個群組，或勾選管理員。"

@@ -1,3 +1,4 @@
+import gc
 import io
 import tempfile
 
@@ -23,8 +24,11 @@ class AdminAccountSettingsTests(TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.media_override.disable()
-        cls.media_directory.cleanup()
-        super().tearDownClass()
+        gc.collect()
+        try:
+            cls.media_directory.cleanup()
+        finally:
+            super().tearDownClass()
 
     @classmethod
     def setUpTestData(cls):

@@ -44,6 +44,19 @@ from .blocks import BaseStreamBlock
 Image.api_fields = [APIField("collection")]
 
 
+def _search_engine_promote_panels():
+    return [
+        MultiFieldPanel(
+            [
+                FieldPanel("slug"),
+                FieldPanel("seo_title"),
+                FieldPanel("search_description"),
+            ],
+            heading=_("For search engines"),
+        )
+    ]
+
+
 class Person(
     WorkflowMixin,
     DraftStateMixin,
@@ -284,6 +297,7 @@ class StandardPage(Page):
         FieldPanel("body"),
         FieldPanel("image"),
     ]
+    promote_panels = _search_engine_promote_panels()
 
     api_fields = [
         APIField("introduction"),
@@ -497,6 +511,7 @@ class HomePage(Page):
             heading="Featured homepage sections",
         ),
     ]
+    promote_panels = _search_engine_promote_panels()
 
     api_fields = [
         APIField("image"),

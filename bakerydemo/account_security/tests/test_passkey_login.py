@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from webauthn.helpers import bytes_to_base64url
@@ -29,6 +29,19 @@ PASSKEY_SETTINGS = {
     "ACCOUNT_SECURITY_PASSKEY_FAILURE_LIMIT": 5,
     "ACCOUNT_SECURITY_PASSKEY_LOCKOUT_SECONDS": 900,
 }
+
+
+class PasswordLoginNavigationTests(SimpleTestCase):
+    @patch(
+        "wagtail.admin.templatetags.wagtailadmin_tags.Locale.objects.all",
+        return_value=[],
+    )
+    def test_password_login_page_links_to_windows_hello_enrolment(self, _locales):
+        response = self.client.get(reverse("wagtailadmin_login"))
+
+        enrol_url = reverse("account_security:passkey_enrol")
+        self.assertContains(response, f'href="{enrol_url}"')
+        self.assertContains(response, "註冊 Windows Hello")
 
 
 @override_settings(**PASSKEY_SETTINGS)

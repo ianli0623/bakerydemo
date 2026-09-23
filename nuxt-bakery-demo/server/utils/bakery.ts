@@ -20,6 +20,7 @@ type BakeryRequest = (
 export interface BakeryDependencies {
   baseUrl: string;
   request: BakeryRequest;
+  staticExport?: boolean;
 }
 
 export async function fetchBakery<T>(
@@ -43,10 +44,13 @@ export async function fetchBakery<T>(
   }
 
   const request = dependencies?.request ?? (ofetch as BakeryRequest);
+  const staticExportSetting =
+    dependencies?.staticExport ?? config?.staticExport;
+  const staticExport = staticExportSetting === true;
 
   try {
     const response = await request(path, { baseURL, query });
-    return resolvePayloadMediaUrls(response, baseURL) as T;
+    return resolvePayloadMediaUrls(response, baseURL, staticExport) as T;
   } catch (error) {
     const details = toBakeryErrorDetails(error);
     throw createError({

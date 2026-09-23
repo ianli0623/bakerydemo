@@ -201,6 +201,69 @@ export function getNavigationItemLabel(
   return item.slug ? item.title : homeLabel;
 }
 
+export interface SiteMapItem {
+  id: string;
+  label: string;
+  path: string;
+  description: string;
+  children?: SiteMapItem[];
+}
+
+export type SiteMapDestination = 'page' | 'section';
+export type SiteMapDescriptionFormatter = (
+  label: string,
+  destination: SiteMapDestination,
+) => string;
+
+export function getSiteMapItems(
+  navigation: BakerySiteSettings['navigation'],
+  homeLabel: string,
+  contactLabel: string,
+  siteMapLabel = '',
+  complianceRegistryLabel = '',
+  describeLink: SiteMapDescriptionFormatter = (label) => label,
+): SiteMapItem[] {
+  return [
+    ...navigation.map((item) => ({
+      id: `page-${item.id}`,
+      label: getNavigationItemLabel(item, homeLabel),
+      path: item.slug ? `/${item.slug}/` : '/',
+      description: describeLink(
+        getNavigationItemLabel(item, homeLabel),
+        'page',
+      ),
+      ...(item.slug === 'certification' && complianceRegistryLabel
+        ? {
+            children: [
+              {
+                id: 'compliance-registry',
+                label: complianceRegistryLabel,
+                path: '/compliance-registry/',
+                description: describeLink(complianceRegistryLabel, 'page'),
+              },
+            ],
+          }
+        : {}),
+    })),
+    ...(siteMapLabel
+      ? [
+          {
+            id: 'sitemap',
+            label: siteMapLabel,
+            path: '/sitemap/',
+            description: describeLink(siteMapLabel, 'page'),
+          },
+        ]
+      : []),
+    {
+      id: 'contact',
+      label: contactLabel,
+      path: '#contact',
+      description: describeLink(contactLabel, 'section'),
+    },
+  ];
+}
+
 export function getContactLinks(contact: BakerySiteSettings['contact']): {
   phone: string | null;
   email: string | null;

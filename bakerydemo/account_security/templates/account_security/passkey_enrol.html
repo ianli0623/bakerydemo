@@ -5,8 +5,8 @@
 {% block branding_login %}{% translate "Windows Hello enrolment" %}{% endblock %}
 
 {% block login_form %}
+  {% csrf_token %}
   {% if registration_ready %}
-    {% csrf_token %}
     <p>{% translate "The enrolment code is valid. Continue to register Windows Hello on this computer." %}</p>
     <button
       class="button button-longrunning"
@@ -24,20 +24,36 @@
     </button>
     <p role="status" aria-live="polite" data-passkey-status></p>
   {% else %}
-    <form method="post" novalidate>
-      {% csrf_token %}
-      {{ form.non_field_errors }}
-      {% for field in form %}
-        <div class="field-content">
-          {{ field.label_tag }}
-          {{ field }}
-          {{ field.errors }}
-        </div>
-      {% endfor %}
-      <button class="button button-longrunning" type="submit">
-        {% translate "Validate enrolment code" %}
-      </button>
-    </form>
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="field-content">
+        {{ field.label_tag }}
+        {{ field }}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button
+      class="button button-longrunning"
+      type="submit"
+      formaction="{% url 'account_security:passkey_enrol' %}"
+    >
+      {% translate "Validate enrolment code" %}
+    </button>
   {% endif %}
   <script src="{% static 'account_security/passkeys.js' %}"></script>
+{% endblock %}
+
+{% block submit_buttons %}{% endblock %}
+
+{% block below_login %}
+  <p>
+    <a class="button button-secondary" href="{% url 'account_security:passkey_login' %}">
+      {% translate "Sign in with Windows Hello" %}
+    </a>
+  </p>
+  <p>
+    <a class="button button-secondary" href="{% url 'wagtailadmin_login' %}">
+      {% translate "Sign in with an email address and password" %}
+    </a>
+  </p>
 {% endblock %}
