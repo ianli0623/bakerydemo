@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from bakerydemo.account_security.models import (
+    FastIdUserLink,
     PasskeyAuditEvent,
     PasskeyCredential,
     PasskeyEnrolment,
@@ -95,3 +96,69 @@ class PasskeyCredentialTests(TestCase):
 
         event.refresh_from_db()
         self.assertIsNone(event.credential)
+
+
+class FastIdUserLinkTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="fast-id-user")
+        self.other_user = get_user_model().objects.create_user(
+            username="other-fast-id-user"
+        )
+
+    def test_link_belongs_to_one_user_and_registration_is_initially_unset(self):
+        link = FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-a",
+            external_user_id="external-1",
+        )
+
+        self.assertEqual(self.user.fast_id_link, link)
+        self.assertIsNone(link.registered_at)
+        self.assertIsNotNone(link.created_at)
+        self.assertIsNotNone(link.updated_at)
+
+    def test_user_can_have_only_one_fast_id_link(self):
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-a",
+            external_user_id="external-1",
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            FastIdUserLink.objects.create(
+                user=self.user,
+                tenant_key="tenant-b",
+                external_user_id="external-2",
+            )
+
+    def test_external_user_is_unique_within_tenant(self):
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-a",
+            external_user_id="external-1",
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            FastIdUserLink.objects.create(
+                user=self.other_user,
+                tenant_key="tenant-a",
+                external_user_id="external-1",
+            )
+
+        other_tenant = FastIdUserLink.objects.create(
+            user=self.other_user,
+            tenant_key="tenant-b",
+            external_user_id="external-1",
+        )
+        self.assertEqual(other_tenant.tenant_key, "tenant-b")
+
+    def test_deleting_user_deletes_fast_id_link(self):
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-a",
+            external_user_id="external-1",
+        )
+
+        self.user.delete()
+
+        self.assertFalse(FastIdUserLink.objects.exists())

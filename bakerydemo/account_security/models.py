@@ -56,6 +56,29 @@ class PasskeyCredential(models.Model):
         ]
 
 
+class FastIdUserLink(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="fast_id_link",
+    )
+    tenant_key = models.CharField(max_length=128)
+    external_user_id = models.CharField(max_length=128)
+    registered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Fast-ID user link"
+        verbose_name_plural = "Fast-ID user links"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant_key", "external_user_id"],
+                name="fast_id_tenant_external_user_unique",
+            )
+        ]
+
+
 class PasskeyEnrolment(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
