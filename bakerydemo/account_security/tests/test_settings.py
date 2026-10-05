@@ -30,6 +30,18 @@ print(json.dumps({{
     ).get("OPTIONS", {{}}).get("IGNORE_EXCEPTIONS"),
     "database_engine": s.DATABASES["default"]["ENGINE"],
     "postgres_app": "django.contrib.postgres" in s.INSTALLED_APPS,
+    "fast_id_enabled": getattr(s, "FAST_ID_ENABLED", False),
+    "fast_id_base_url": getattr(s, "FAST_ID_BASE_URL", ""),
+    "fast_id_tenant_id": getattr(s, "FAST_ID_TENANT_ID", ""),
+    "fast_id_tenant_key": getattr(s, "FAST_ID_TENANT_KEY", ""),
+    "fast_id_client_id": getattr(s, "FAST_ID_CLIENT_ID", ""),
+    "fast_id_has_client_secret": bool(getattr(s, "FAST_ID_CLIENT_SECRET", "")),
+    "fast_id_has_management_token": bool(
+        getattr(s, "FAST_ID_MANAGEMENT_API_TOKEN", "")
+    ),
+    "fast_id_rp_id": getattr(s, "FAST_ID_RP_ID", ""),
+    "fast_id_origin": getattr(s, "FAST_ID_ORIGIN", ""),
+    "fast_id_timeout": getattr(s, "FAST_ID_TIMEOUT_SECONDS", None),
 }}))
 '''
         environment = os.environ.copy()
@@ -39,6 +51,16 @@ print(json.dumps({{
             "SECURE_HSTS_SECONDS",
             "REDIS_TLS_URL",
             "REDIS_URL",
+            "FAST_ID_ENABLED",
+            "FAST_ID_BASE_URL",
+            "FAST_ID_TENANT_ID",
+            "FAST_ID_TENANT_KEY",
+            "FAST_ID_CLIENT_ID",
+            "FAST_ID_CLIENT_SECRET",
+            "FAST_ID_MANAGEMENT_API_TOKEN",
+            "FAST_ID_RP_ID",
+            "FAST_ID_ORIGIN",
+            "FAST_ID_TIMEOUT_SECONDS",
         ):
             environment.pop(key, None)
         environment.update(extra_env or {})
@@ -117,3 +139,41 @@ print(json.dumps({{
             "django.db.backends.postgresql",
         )
         self.assertTrue(settings["postgres_app"])
+
+    def test_fast_id_is_disabled_by_default(self):
+        production = self._read_settings(
+            "bakerydemo.settings.production",
+            {"PRIMARY_HOST": "cms.example.com"},
+        )
+
+        self.assertFalse(production["fast_id_enabled"])
+        self.assertEqual(production["fast_id_timeout"], 5.0)
+
+    def test_production_loads_fast_id_settings_without_printing_secrets(self):
+        production = self._read_settings(
+            "bakerydemo.settings.production",
+            {
+                "PRIMARY_HOST": "cms.example.com",
+                "FAST_ID_ENABLED": "TrUe",
+                "FAST_ID_BASE_URL": "https://fido.example.com",
+                "FAST_ID_TENANT_ID": "tenant-id",
+                "FAST_ID_TENANT_KEY": "tenant-key",
+                "FAST_ID_CLIENT_ID": "client-id",
+                "FAST_ID_CLIENT_SECRET": "test-client-secret",
+                "FAST_ID_MANAGEMENT_API_TOKEN": "test-management-token",
+                "FAST_ID_RP_ID": "example.com",
+                "FAST_ID_ORIGIN": "https://login.example.com",
+                "FAST_ID_TIMEOUT_SECONDS": "3.5",
+            },
+        )
+
+        self.assertTrue(production["fast_id_enabled"])
+        self.assertEqual(production["fast_id_base_url"], "https://fido.example.com")
+        self.assertEqual(production["fast_id_tenant_id"], "tenant-id")
+        self.assertEqual(production["fast_id_tenant_key"], "tenant-key")
+        self.assertEqual(production["fast_id_client_id"], "client-id")
+        self.assertTrue(production["fast_id_has_client_secret"])
+        self.assertTrue(production["fast_id_has_management_token"])
+        self.assertEqual(production["fast_id_rp_id"], "example.com")
+        self.assertEqual(production["fast_id_origin"], "https://login.example.com")
+        self.assertEqual(production["fast_id_timeout"], 3.5)

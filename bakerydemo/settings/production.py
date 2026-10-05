@@ -49,6 +49,33 @@ ACCOUNT_SECURITY_WEBAUTHN_ORIGIN = os.environ.get(
     else "",
 )
 
+
+def _environment_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+FAST_ID_ENABLED = _environment_flag("FAST_ID_ENABLED")
+FAST_ID_BASE_URL = os.environ.get("FAST_ID_BASE_URL", "")
+FAST_ID_TENANT_ID = os.environ.get("FAST_ID_TENANT_ID", "")
+FAST_ID_TENANT_KEY = os.environ.get("FAST_ID_TENANT_KEY", "")
+FAST_ID_CLIENT_ID = os.environ.get("FAST_ID_CLIENT_ID", "")
+FAST_ID_CLIENT_SECRET = os.environ.get("FAST_ID_CLIENT_SECRET", "")
+FAST_ID_MANAGEMENT_API_TOKEN = os.environ.get(
+    "FAST_ID_MANAGEMENT_API_TOKEN",
+    "",
+)
+FAST_ID_RP_ID = os.environ.get("FAST_ID_RP_ID", "")
+FAST_ID_ORIGIN = os.environ.get("FAST_ID_ORIGIN", "")
+try:
+    FAST_ID_TIMEOUT_SECONDS = float(
+        os.environ.get("FAST_ID_TIMEOUT_SECONDS", "5")
+    )
+except ValueError:
+    FAST_ID_TIMEOUT_SECONDS = 0.0
+
 # AWS creds may be used for S3 and/or Elasticsearch
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")

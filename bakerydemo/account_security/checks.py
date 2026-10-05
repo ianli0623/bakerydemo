@@ -18,16 +18,99 @@ def _valid_rp_id(value):
     )
 
 
+def _valid_https_origin(value):
+    parsed = urlparse(value)
+    try:
+        _port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.netloc)
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.path in {"", "/"}
+        and not parsed.params
+        and not parsed.query
+        and not parsed.fragment
+    )
+
+
+def _check_fast_id_settings():
+    if not getattr(settings, "FAST_ID_ENABLED", False):
+        return []
+
+    required_names = (
+        "FAST_ID_BASE_URL",
+        "FAST_ID_TENANT_ID",
+        "FAST_ID_TENANT_KEY",
+        "FAST_ID_CLIENT_ID",
+        "FAST_ID_CLIENT_SECRET",
+        "FAST_ID_MANAGEMENT_API_TOKEN",
+        "FAST_ID_RP_ID",
+        "FAST_ID_ORIGIN",
+    )
+    missing_names = [
+        name for name in required_names if not getattr(settings, name, "")
+    ]
+    if missing_names:
+        return [
+            Error(
+                "Fast-ID is enabled but required server settings are missing: "
+                + ", ".join(missing_names),
+                id="account_security.E007",
+            )
+        ]
+
+    errors = []
+    if not _valid_https_origin(settings.FAST_ID_BASE_URL):
+        errors.append(
+            Error(
+                "FAST_ID_BASE_URL must be an HTTPS origin without a path.",
+                id="account_security.E008",
+            )
+        )
+
+    rp_id = settings.FAST_ID_RP_ID
+    parsed_origin = urlparse(settings.FAST_ID_ORIGIN)
+    origin_host = parsed_origin.hostname or ""
+    rp_id_lower = rp_id.lower()
+    origin_matches_rp = origin_host == rp_id_lower or origin_host.endswith(
+        f".{rp_id_lower}"
+    )
+    if (
+        not _valid_rp_id(rp_id)
+        or not _valid_https_origin(settings.FAST_ID_ORIGIN)
+        or not origin_matches_rp
+    ):
+        errors.append(
+            Error(
+                "FAST_ID_ORIGIN must be an HTTPS origin on FAST_ID_RP_ID or its subdomain.",
+                id="account_security.E009",
+            )
+        )
+
+    timeout = getattr(settings, "FAST_ID_TIMEOUT_SECONDS", 0)
+    if not isinstance(timeout, (int, float)) or timeout <= 0:
+        errors.append(
+            Error(
+                "FAST_ID_TIMEOUT_SECONDS must be a positive number.",
+                id="account_security.E010",
+            )
+        )
+    return errors
+
+
 @register(Tags.security, deploy=True)
 def check_account_security_settings(app_configs, **kwargs):
+    errors = _check_fast_id_settings()
     if not getattr(
         settings,
         "ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS",
         False,
     ):
-        return []
+        return errors
 
-    errors = []
     admin_password = getattr(settings, "ADMIN_PASSWORD", "")
     try:
         validate_password(admin_password)

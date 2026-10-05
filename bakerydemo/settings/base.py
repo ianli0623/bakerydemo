@@ -181,6 +181,19 @@ ACCOUNT_SECURITY_PASSKEY_FAILURE_LIMIT = 5
 ACCOUNT_SECURITY_PASSKEY_LOCKOUT_SECONDS = 900
 ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS = "default"
 
+# Fast-ID is an opt-in passkey provider. Secrets are loaded by production
+# settings only and must never be exposed to browser code.
+FAST_ID_ENABLED = False
+FAST_ID_BASE_URL = ""
+FAST_ID_TENANT_ID = ""
+FAST_ID_TENANT_KEY = ""
+FAST_ID_CLIENT_ID = ""
+FAST_ID_CLIENT_SECRET = ""
+FAST_ID_MANAGEMENT_API_TOKEN = ""
+FAST_ID_RP_ID = ""
+FAST_ID_ORIGIN = ""
+FAST_ID_TIMEOUT_SECONDS = 5.0
+
 # Wagtail 7.4 embeds password editing in the account page. Disable that editor
 # so every password change uses the transactional security flow above.
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = False
