@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.utils import timezone
 
 from bakerydemo.account_security.models import (
     PasskeyAuditEvent,
@@ -50,6 +53,34 @@ class PasskeyCredentialTests(TestCase):
 
         self.assertFalse(PasskeyCredential.objects.exists())
         self.assertFalse(PasskeyEnrolment.objects.exists())
+
+    def test_deleting_user_with_self_created_enrolment_succeeds(self):
+        user_id = self.user.pk
+        enrolment = PasskeyEnrolment.objects.create(
+            user=self.user,
+            created_by=self.user,
+            code_digest="b" * 64,
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+
+        get_user_model().objects.filter(pk=user_id).delete()
+
+        self.assertFalse(get_user_model().objects.filter(pk=user_id).exists())
+        self.assertFalse(PasskeyEnrolment.objects.filter(pk=enrolment.pk).exists())
+
+    def test_deleting_creator_revokes_pending_enrolment_and_preserves_record(self):
+        enrolment = PasskeyEnrolment.objects.create(
+            user=self.user,
+            created_by=self.other_user,
+            code_digest="c" * 64,
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+
+        self.other_user.delete()
+
+        enrolment.refresh_from_db()
+        self.assertIsNone(enrolment.created_by)
+        self.assertIsNotNone(enrolment.revoked_at)
 
     def test_deleting_credential_preserves_audit_event(self):
         credential = credential_factory(self.user, credential_id="audited")

@@ -1,10 +1,12 @@
 from axes.handlers.proxy import AxesProxyHandler
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_logged_in
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_delete, pre_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from .authentication import normalize_account_email
+from .models import PasskeyEnrolment
 from .services import sync_password_change
 
 User = get_user_model()
@@ -36,3 +38,19 @@ def reset_email_login_attempts(sender, request, user, **kwargs):
     account_email = normalize_account_email(user.email)
     if account_email:
         AxesProxyHandler.reset_attempts(username=account_email)
+
+
+@receiver(
+    pre_delete,
+    sender=User,
+    dispatch_uid="account_security_revoke_pending_enrolments_on_user_delete",
+)
+def revoke_pending_enrolments_created_by_deleted_user(
+    sender, instance, using, **kwargs
+):
+    PasskeyEnrolment.objects.using(using).filter(
+        created_by=instance,
+        consumed_at__isnull=True,
+        revoked_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    ).update(revoked_at=timezone.now())

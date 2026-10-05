@@ -15,6 +15,34 @@ from bakerydemo.base.models import HomePage, StandardPage
 
 
 class AdminMessageTemplateTests(SimpleTestCase):
+    def test_tag_spacing_help_has_traditional_chinese_translation(self):
+        source = (
+            "Multi-word tags with spaces will automatically be enclosed "
+            'in double quotes (").'
+        )
+
+        with override("zh-hant"):
+            localized = gettext(source)
+
+        self.assertEqual(
+            localized,
+            '含有空格的多字詞標籤會自動加上雙引號（"）。',
+        )
+
+    def test_image_focal_point_help_has_traditional_chinese_translation(self):
+        source = (
+            "To define this image's most important region, "
+            "drag a box over the image above."
+        )
+
+        with override("zh-hant"):
+            localized = gettext(source)
+
+        self.assertEqual(
+            localized,
+            "若要指定這張圖片最重要的區域，請在上方圖片上拖曳框選。",
+        )
+
     def test_publish_message_hides_view_live_but_keeps_success_and_edit(self):
         for language in ("zh-hant", "en"):
             with self.subTest(language=language), override(language):
@@ -194,6 +222,25 @@ class AdminNavigationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Aging pages")
         self.assertNotContains(response, "久未更新頁面")
+
+    def test_image_sort_options_are_localized_in_traditional_chinese(self):
+        response = self.client.get(reverse("wagtailimages:index"))
+
+        self.assertEqual(response.status_code, 200)
+        translations = {
+            "Newest": "最新",
+            "Oldest": "最舊",
+            "Title: (A -> Z)": "標題：（A → Z）",
+            "Title: (Z -> A)": "標題：（Z → A）",
+            "File size: (low to high)": "檔案大小：（小到大）",
+            "File size: (high to low)": "檔案大小：（大到小）",
+            "Usage count: (low to high)": "使用次數：（少到多）",
+            "Usage count: (high to low)": "使用次數：（多到少）",
+        }
+        for english, traditional_chinese in translations.items():
+            with self.subTest(english=english):
+                self.assertContains(response, traditional_chinese)
+                self.assertNotContains(response, english)
 
     def test_help_and_search_are_hidden_from_main_menu(self):
         sidebar = self._get_sidebar()

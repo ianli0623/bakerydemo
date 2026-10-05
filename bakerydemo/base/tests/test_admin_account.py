@@ -47,9 +47,7 @@ class AdminAccountSettingsTests(TestCase):
 
     def _account_form_data(self, **extra):
         data = {
-            "name_email-first_name": self.user.first_name,
-            "name_email-last_name": self.user.last_name,
-            "name_email-email": self.user.email,
+            "name_email-username": self.user.username,
             "locale-preferred_language": "zh-hant",
             "locale-current_time_zone": "UTC",
             "theme-theme": self.profile.theme,
@@ -67,6 +65,29 @@ class AdminAccountSettingsTests(TestCase):
             image_bytes.getvalue(),
             content_type="image/png",
         )
+
+    def test_account_profile_displays_alias_instead_of_structured_name_fields(self):
+        response = self.client.get(reverse("wagtailadmin_account"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="name_email-username"')
+        self.assertContains(response, 'value="admin-avatar"')
+        self.assertNotContains(response, 'name="name_email-first_name"')
+        self.assertNotContains(response, 'name="name_email-last_name"')
+        self.assertNotContains(response, 'name="name_email-email"')
+
+    def test_account_profile_saves_alias_without_changing_account_id(self):
+        original_email = self.user.email
+
+        response = self.client.post(
+            reverse("wagtailadmin_account"),
+            self._account_form_data(**{"name_email-username": "updated-alias"}),
+        )
+
+        self.assertRedirects(response, reverse("wagtailadmin_account"))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "updated-alias")
+        self.assertEqual(self.user.email, original_email)
 
     def test_reset_to_default_clears_custom_avatar(self):
         self.profile.avatar.save("custom.png", self._image_file(), save=True)

@@ -64,7 +64,9 @@ class PasskeyEnrolment(models.Model):
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="created_passkey_enrolments",
     )
     code_digest = models.CharField(max_length=64, unique=True)

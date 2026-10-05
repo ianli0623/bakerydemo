@@ -2,6 +2,7 @@ import secrets
 import string
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.password_validation import (
     password_validators_help_text_html,
@@ -21,6 +22,19 @@ GENERIC_LOGIN_ERROR = _(
 
 TEMPORARY_PASSWORD_LENGTH = 20
 TEMPORARY_PASSWORD_SYMBOLS = "!@#$%^*-_=+"
+
+
+class AccountAliasForm(forms.ModelForm):
+    class Meta:
+        model = get_user_model()
+        fields = ["username"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].label = _("Alias / display name")
+        self.fields["username"].help_text = _(
+            "Used only for display. Sign-in uses the email account ID."
+        )
 
 
 def generate_temporary_password(user):

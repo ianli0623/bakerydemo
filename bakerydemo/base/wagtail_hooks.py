@@ -4,6 +4,7 @@ from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
 from wagtail.admin.views.account import (
     AvatarSettingsPanel,
+    NameEmailSettingsPanel,
     NotificationsSettingsPanel,
     ThemeSettingsPanel,
 )
@@ -11,6 +12,7 @@ from wagtail.admin.views.pages.history import PageHistoryView
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
+from bakerydemo.account_security.forms import AccountAliasForm
 from bakerydemo.base.admin_history import (
     get_collapsed_page_history_columns,
     get_collapsed_page_history_queryset,
@@ -23,6 +25,8 @@ from bakerydemo.base.forms import (
 )
 from bakerydemo.base.models import FooterText, LocalizedSiteContent, Person
 
+# Use the same display alias field on the account page as the user editor.
+NameEmailSettingsPanel.form_class = AccountAliasForm
 # Ensure the account panel treats the clear checkbox as an explicit reset.
 AvatarSettingsPanel.form_class = ResettableAvatarPreferencesForm
 # Keep the remaining theme controls while hiding Wagtail-specific shortcuts.

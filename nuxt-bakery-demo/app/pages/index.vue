@@ -130,13 +130,12 @@ useHead(() => ({
             </div>
           </div>
 
-          <aside
+          <div
             v-if="homePresentation.newsBlock"
             class="home-news"
-            :aria-label="homePresentation.newsBlock.value.heading"
           >
             <CardGrid :value="homePresentation.newsBlock.value" />
-          </aside>
+          </div>
         </div>
       </section>
 
