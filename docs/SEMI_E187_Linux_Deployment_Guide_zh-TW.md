@@ -1,6 +1,6 @@
-# SEMI E187 Linux 前後台、PostgreSQL 與 Windows Hello 部署手冊
+# SEMI E187 Linux 前後台、PostgreSQL、Windows Hello 與 Fast-ID 部署手冊
 
-最後更新：2026-09-17
+最後更新：2026-10-06
 
 ## 1. 文件目的
 
@@ -11,6 +11,7 @@
 - PostgreSQL 18
 - Redis 登入失敗限制快取
 - Windows Hello／WebAuthn 無密碼登入
+- 可選用的 Fast-ID WebAuthn 服務
 - systemd 服務
 - Nginx 反向代理
 - HTTPS 憑證
@@ -41,6 +42,9 @@ git rev-parse HEAD
 test -f bakerydemo/account_security/passkeys.py
 test -f bakerydemo/account_security/migrations/0003_passkeycredential_passkeyauditevent_passkeyenrolment_and_more.py
 test -f bakerydemo/account_security/migrations/0004_passkeyenrolment_passkey_one_pending_per_user.py
+test -f bakerydemo/account_security/migrations/0007_fastiduserlink.py
+test -f bakerydemo/account_security/fast_id.py
+test -f bakerydemo/account_security/passkey_providers.py
 ```
 
 任一檔案不存在時，代表目前版本尚未包含完整 Windows Hello 功能，應停止部署並先處理版本整合。
@@ -296,6 +300,18 @@ WEBAUTHN_ORIGIN=https://semi.example.com
 ADMIN_PASSWORD=Aa1!PASTE_RANDOM_VALUE
 DJANGO_LOG_LEVEL=INFO
 SECURE_HSTS_SECONDS=2592000
+
+# Fast-ID 預設保持停用；完成第 21.5 節的驗證後才改為 true。
+FAST_ID_ENABLED=false
+FAST_ID_BASE_URL=https://fido.example.com
+FAST_ID_TENANT_ID=replace-with-tenant-id
+FAST_ID_TENANT_KEY=replace-with-tenant-key
+FAST_ID_CLIENT_ID=replace-with-client-id
+FAST_ID_CLIENT_SECRET=replace-with-client-secret
+FAST_ID_MANAGEMENT_API_TOKEN=replace-with-rotated-management-token
+FAST_ID_RP_ID=semi.example.com
+FAST_ID_ORIGIN=https://semi.example.com
+FAST_ID_TIMEOUT_SECONDS=5
 ```
 
 注意事項：
@@ -308,6 +324,14 @@ SECURE_HSTS_SECONDS=2592000
 - 多個 `DJANGO_ALLOWED_HOSTS` 使用逗號分隔，中間不要加入空白。
 - `ADMIN_PASSWORD` 是正式環境安全檢查所需的獨立密碼，至少 12 字元並符合密碼政策。
 - 即使移轉既有管理者帳號，仍需設定符合規則的 `ADMIN_PASSWORD`。
+- `FAST_ID_ENABLED=false` 時完全沿用本機 Windows Hello；其他 Fast-ID 值可先填妥但不會被使用。
+- `FAST_ID_BASE_URL` 必須是 Fast-ID API 的 HTTPS Origin，不可包含路徑。
+- `FAST_ID_RP_ID` 與 `FAST_ID_ORIGIN` 必須對應實際測試或正式網站；Fast-ID 管理平台也必須允許該 Origin。
+- `FAST_ID_CLIENT_ID` 與 `FAST_ID_CLIENT_SECRET` 以 HTTP Basic 驗證取得使用者 token，並驗證登入完成後的 token。
+- `FAST_ID_MANAGEMENT_API_TOKEN` 僅供後端查詢 Tenant User；建議只填 token 本體，程式會加上 `Bearer`。
+- Fast-ID 的 Client Secret、管理 Token 與使用者 token 一律只存在 Django 伺服器端，不可傳給瀏覽器或寫入前端程式。
+- 客戶曾透過訊息提供過的管理 Token 應先在 Fast-ID 平台撤銷並重新產生，再填入正式環境。
+- `.env.example` 只有欄位名稱與假資料；不得把實際 Tenant、Client Secret、Token、Email 或客戶網域提交至 Git。
 
 ### 12.3 前端設定
 
@@ -794,6 +818,49 @@ localhost != semi.example.com
 
 撤銷最後一組憑證前，先確認使用者有其他可用憑證、密碼登入方式或已取得新註冊碼。
 
+### 21.5 Fast-ID 第一階段 PoC 啟用與回復
+
+Fast-ID 是可選的 Passkey Provider，沿用既有 Windows Hello 註冊及登入 URL。切換只發生在 Django 後端，前端不持有管理 Token、Client Secret 或 Fast-ID 使用者 token。
+
+目前串接職責如下：
+
+| 憑證 | 用途 | 保存位置 |
+|---|---|---|
+| Client ID／Client Secret | 以 HTTP Basic 取得 Tenant User token，並呼叫 `/api/webauthn/token/verify` 驗證登入 token | 僅限 `backend.env` |
+| Management API Token | 查詢既有 Tenant User，將 Django Email 對應到 Fast-ID 外部使用者 ID | 僅限 `backend.env` |
+| Tenant User token | 進行該使用者的 WebAuthn 註冊流程 | 僅限伺服器端短期 Session 狀態 |
+
+Fast-ID API 初始化回應目前相容廠商範例的頂層 `publicKey`，以及 `{ "success": true, "data": ... }` 包裝格式。若正式平台回應不同，系統會安全拒絕，不會略過驗證。
+
+安全啟用順序：
+
+1. 在 Fast-ID 管理平台撤銷任何曾透過訊息、郵件或文件明文傳遞的管理 Token，重新產生正式 Token。
+2. 確認 Tenant、App ID、RP ID 與 HTTPS Origin 都是預定測試網域，並已在 Fast-ID 平台允許該 Origin。
+3. 確認測試 Email 已預先建立為 Tenant User；第一階段不會自動建立遠端使用者。
+4. 將 Fast-ID 機密填入 `/etc/semi-e187/backend.env`，保持 `FAST_ID_ENABLED=false`。
+5. 執行 migration、靜態檔收集及部署檢查，確認沒有 `account_security.E007` 至 `E010`。
+6. 部署並重新啟動後端，先確認原本本機 Windows Hello 仍可註冊與登入。
+7. 將測試環境的 `FAST_ID_ENABLED` 改為 `true`，重新啟動後端。
+8. 只用已核准的預建 Tenant User，逐一測試註冊、登出、登入、錯誤重試及稽核紀錄。
+9. 在 Fast-ID 管理平台確認 Tenant User、Authenticator 與 Audit Log 符合預期。
+
+啟用後可執行：
+
+```bash
+sudo systemctl restart semi-e187-backend
+sudo journalctl -u semi-e187-backend -n 100 --no-pager
+```
+
+回復本機 Windows Hello：
+
+1. 將 `/etc/semi-e187/backend.env` 的 `FAST_ID_ENABLED` 改回 `false`。
+2. 重新啟動 `semi-e187-backend`。
+3. 使用既有本機 Windows Hello 憑證完成登入測試。
+
+回復不會刪除本機 Passkey、Fast-ID 對應資料或密碼；既有密碼備援仍保留。切回 Fast-ID 前仍應重新確認遠端 Tenant User 與憑證狀態。
+
+> 上線前必須用廠商實際環境再次確認 API Base URL、端點版本、回應格式及 Tenant 隔離行為。自動測試不會連線至客戶 Fast-ID 平台，正式 smoke test 必須人工完成。
+
 ## 22. 上線驗證
 
 ### 22.1 指令驗證
@@ -850,6 +917,17 @@ sudo -iu deploy bash -lc '
 - [ ] 註冊、登入、失敗、限流與撤銷均有稽核紀錄。
 
 網站只能確認 Windows Hello 完成了使用者驗證，無法判斷該次使用的是指紋、臉部辨識或 PIN。
+
+### 22.4 Fast-ID 驗證（僅在啟用時）
+
+- [ ] `python manage.py check --deploy --settings=bakerydemo.settings.production` 沒有 `E007` 至 `E010`。
+- [ ] Fast-ID 管理 Token 已輪替，且未出現在 Git、HTML、JavaScript 或瀏覽器開發者工具。
+- [ ] 測試 Email 在 Fast-ID 平台為啟用中的 Tenant User，且 Django Email 完全一致。
+- [ ] 第一次註冊後建立唯一的 Django／Fast-ID 使用者對應，且沒有建立本機公開金鑰紀錄。
+- [ ] 登出後可透過 Fast-ID 登入，登入身分由伺服器端 `/api/webauthn/token/verify` 的 `claims.sub` 決定。
+- [ ] 偽造瀏覽器 token、錯誤 subject、重複流程、逾時及 Fast-ID 服務中斷均安全失敗。
+- [ ] 密碼登入仍可使用，且 Fast-ID 註冊失敗不會停用原密碼。
+- [ ] 將 `FAST_ID_ENABLED=false` 並重新啟動後，既有本機 Windows Hello 可正常登入。
 
 ## 23. 日後發布更新
 
@@ -992,8 +1070,9 @@ sudo journalctl -u redis-server -n 100 --no-pager
 - [ ] 資料庫密碼、Django SECRET_KEY 與 ADMIN_PASSWORD 使用不同值。
 - [ ] `WEBAUTHN_RP_ID` 為固定正式主機名稱。
 - [ ] `WEBAUTHN_ORIGIN` 與實際後台 HTTPS Origin 完全一致。
-- [ ] migration `0003`、`0004` 已套用。
+- [ ] migration `0003` 至 `0007` 已套用。
 - [ ] 三張 Passkey 資料表存在。
+- [ ] Fast-ID 若啟用，`backend.env` 已完整設定，管理 Token 已輪替，且通過第 22.4 節測試。
 - [ ] `collectstatic` 與 `check --deploy` 已完成。
 - [ ] `check --deploy` 沒有 `E001` 至 `E006`。
 - [ ] `npm test`、`npm run typecheck` 與 `npm run build` 已完成。
