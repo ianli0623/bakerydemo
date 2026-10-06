@@ -8,6 +8,12 @@
 
 **Tech Stack:** Python 3, Django 6, Wagtail 7.4, PostgreSQL-compatible Django models, `httpx` 0.28, WebAuthn browser APIs, Django test framework, `prek`.
 
+**Vendor-contract amendment:** The later-supplied API flow and vendor backend
+manual document HTTP Basic Client ID/Secret token operations and
+`POST /api/webauthn/token/verify`. Tasks 1, 3, 4, 5, and 6 below use that
+verified-subject contract instead of the earlier provisional unverified-token
+design.
+
 **Spec:** `docs/superpowers/specs/2026-10-05-fast-id-poc-design.md`
 
 ## Global Constraints
@@ -53,7 +59,7 @@
   .\.venv\Scripts\python.exe manage.py test bakerydemo.account_security.tests.test_settings bakerydemo.account_security.tests.test_security_checks
   ```
 
-- [ ] Define safe defaults in `base.py` and load environment overrides in `production.py`. Load the Client Secret for future compatibility but do not use it in the PoC.
+- [ ] Define safe defaults in `base.py` and load environment overrides in `production.py`. Use the Client ID/Secret only for the documented server-to-server HTTP Basic token operations.
 - [ ] Extend `account_security_configuration_check()` with stable Fast-ID error IDs beginning at `account_security.E007`; report setting names and safe remediation only, never setting values.
 - [ ] Re-run the focused tests and confirm they pass.
 - [ ] Commit the settings boundary:
@@ -129,9 +135,7 @@ class FastIdError(Exception):
 
 @dataclass(frozen=True)
 class FastIdAuthenticationResult:
-    email: str
-    issuer: str
-    expires_at: datetime
+    external_user_id: str
 
 class FastIdClient:
     @classmethod
@@ -149,7 +153,7 @@ class FastIdClient:
 - [ ] Add `httpx>=0.28,<0.29` to the base requirements and install/sync dependencies using the repository's normal environment command.
 - [ ] Write `httpx.MockTransport` tests for every endpoint path, method, JSON body, expected response field, and timeout.
 - [ ] Add a regression test where the configured management token already starts with `Bearer ` and assert the outgoing `Authorization` header contains exactly one prefix.
-- [ ] Add failure tests for network timeout, non-2xx status, non-JSON body, missing `data`, malformed authentication result, expired result, and wrong issuer. Assert each raises a safe `FastIdError.reason` and that neither configured secret appears in `str(exc)`.
+- [ ] Add failure tests for network timeout, non-2xx status, non-JSON body, missing `data`, malformed authentication result, and unverified, expired, or revoked token-verification results. Assert each raises a safe `FastIdError.reason` and that neither configured secret appears in `str(exc)`.
 - [ ] Run the client tests and confirm they fail because `fast_id.py` does not exist:
 
   ```powershell
@@ -158,8 +162,8 @@ class FastIdClient:
   ```
 
 - [ ] Implement a small `httpx.Client` wrapper that joins paths safely, encodes JSON, enforces the configured timeout, validates response shapes, and normalizes all remote failures into documented safe reason codes.
-- [ ] Normalize the management authorization value by stripping any existing case-insensitive `Bearer` prefix before adding exactly one prefix. Use user tokens only on the registration calls that require them.
-- [ ] Parse authentication identity only from the immediate finalize response. Validate success, issuer, expiry, and normalized non-empty email; do not expose or return the raw identity token.
+- [ ] Normalize the management authorization value by stripping any existing case-insensitive `Bearer` prefix before adding exactly one prefix. Use HTTP Basic Client ID/Secret for user-token issuance and token verification; use user tokens only on registration calls that require them.
+- [ ] Accept the authentication token only from the immediate server-to-server finalize response, send it to `/api/webauthn/token/verify`, and require verified, unexpired, non-revoked output with a non-empty `claims.sub`. Do not expose or return the raw identity token.
 - [ ] Re-run the client tests and confirm they pass.
 - [ ] Commit the HTTP boundary:
 
@@ -202,7 +206,7 @@ Each provider implements `start_registration(user)`, `finish_registration(user, 
 - [ ] Add local-adapter characterization tests proving it delegates to the existing `build_*`, `complete_registration`, and `verify_login_credential` functions without changing local credential storage.
 - [ ] Add Fast-ID lookup tests for case-insensitive normalized email matching and rejection of zero matches, multiple matches, empty external IDs, a tenant mismatch, or an existing link that points to another external user.
 - [ ] Add Fast-ID registration tests proving it obtains a user token, returns only public-key options plus server-side state, creates/updates the mapping after an unambiguous match, marks `registered_at` only after successful finalize, consumes the enrolment once, and does not disable the password.
-- [ ] Add authentication tests proving only an active staff Django user with the finalized normalized email and matching Fast-ID link is returned. Cover missing user, duplicate case-insensitive local email, inactive user, non-staff user, expired result, wrong issuer, and malformed result.
+- [ ] Add authentication tests proving only an active staff Django user with a registered Fast-ID link matching the verified external subject is returned. Cover missing or unregistered links, inactive users, non-staff users, and unverified, expired, revoked, or malformed results.
 - [ ] Add explicit tests proving a token field injected into `credential_payload` is ignored and cannot choose the authenticated user.
 - [ ] Run the provider tests and confirm they fail because the adapters do not exist:
 
@@ -281,10 +285,10 @@ Each provider implements `start_registration(user)`, `finish_registration(user, 
 - Create or modify if already present: `.env.example`
 - Modify: `.gitignore` only if needed to keep `.env` ignored and `.env.example` tracked
 
-- [ ] Add a Fast-ID deployment section listing every environment variable with placeholders only. Explicitly state that `FAST_ID_CLIENT_SECRET` is unused in this PoC and that the management token must be stored server-side.
+- [ ] Add a Fast-ID deployment section listing every environment variable with placeholders only. Document Client ID/Secret and management-token roles, and require all credentials to remain server-side.
 - [ ] Document the safe rollout sequence: rotate the previously exposed management token, configure HTTPS domain/RP/CORS, run checks and migrations, keep `FAST_ID_ENABLED=false`, deploy, enable on the test domain, then smoke-test only the two pre-created tenant users.
 - [ ] Document rollback as setting `FAST_ID_ENABLED=false` and restarting the application; clarify that local credentials and mapping rows remain intact.
-- [ ] Document the production blocker: obtain JWKS/public-key verification or a documented introspection endpoint before treating Fast-ID identity as production-ready.
+- [ ] Document that production smoke testing must confirm the deployed vendor endpoint version, response contract, and tenant isolation behavior.
 - [ ] Add `.env.example` placeholders only if the repository does not already have an equivalent tracked configuration example. Confirm it contains no actual tenant IDs, Client ID, token, Client Secret, email address, or domain supplied by the customer.
 - [ ] Run documentation and secret-safety checks:
 
@@ -350,7 +354,7 @@ Before accepting the implementation, reviewers must verify these regression test
 
 1. A management token already containing `Bearer ` produces exactly one authorization prefix.
 2. Missing or duplicate normalized Fast-ID email matches fail closed.
-3. Expired, wrong-issuer, unsuccessful, or malformed authentication finalize results fail closed.
+3. Unverified, expired, revoked, unsuccessful, or malformed authentication and token-verification results fail closed.
 4. Provider-mismatched, expired, or replayed session state is rejected and cleared.
 5. Timeout, non-JSON, and non-2xx remote failures produce generic user errors and safe audit reasons without leaking either secret.
 

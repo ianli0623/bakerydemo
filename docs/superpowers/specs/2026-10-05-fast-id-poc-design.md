@@ -27,7 +27,7 @@ The PoC excludes:
 - migration of existing local passkey credentials to Fast-ID;
 - removal of password authentication;
 - accepting a Fast-ID token supplied by the browser as proof of identity;
-- using the Fast-ID Client Secret before its token endpoint is documented;
+- accepting an unverified identity token supplied by the browser;
 - live Fast-ID registration or destructive API calls in automated tests.
 
 ## Selected Approach
@@ -51,7 +51,7 @@ The Fast-ID provider reads these environment variables through Django settings:
 - `FAST_ID_TENANT_ID`, required when enabled;
 - `FAST_ID_TENANT_KEY`, required when enabled;
 - `FAST_ID_CLIENT_ID`, retained for the documented tenant configuration;
-- `FAST_ID_CLIENT_SECRET`, loaded but unused by this PoC;
+- `FAST_ID_CLIENT_SECRET`, required for the documented HTTP Basic token operations;
 - `FAST_ID_MANAGEMENT_API_TOKEN`, required when enabled;
 - `FAST_ID_RP_ID`, required when enabled;
 - `FAST_ID_ORIGIN`, required when enabled;
@@ -79,7 +79,8 @@ timeouts, response validation, and exception normalization. It supports:
 - `POST /api/webauthn/{tenant_key}/registration/initialize`;
 - `POST /api/webauthn/{tenant_key}/registration/finalize`;
 - `POST /api/webauthn/{tenant_key}/authentication/initialize`;
-- `POST /api/webauthn/{tenant_key}/authentication/finalize`.
+- `POST /api/webauthn/{tenant_key}/authentication/finalize`;
+- `POST /api/webauthn/token/verify`.
 
 The client accepts an injectable HTTP transport so tests exercise parsing and
 error handling without network access. Remote non-2xx responses, invalid JSON,
@@ -141,19 +142,21 @@ remove the recovery password.
 3. The browser runs `navigator.credentials.get()` and posts the serialized
    assertion to Django.
 4. Django sends that assertion directly to Fast-ID authentication finalize.
-5. Django accepts identity only from the immediate TLS-protected Fast-ID
-   response. A token supplied by the browser is never accepted.
-6. Django checks Fast-ID success, token expiry and issuer claims, extracts and
-   normalizes the email, confirms the Fast-ID tenant user mapping, then finds an
-   active staff Django user with that email.
-7. Django clears the existing throttle counter, records a success audit event,
+5. Django accepts the returned token only from the immediate TLS-protected
+   server-to-server finalize response. A token supplied by the browser is never
+   accepted.
+6. Django calls the documented `/api/webauthn/token/verify` endpoint with HTTP
+   Basic Client ID/Secret authentication.
+7. Django requires a verified, unexpired, non-revoked result, extracts
+   `claims.sub`, and resolves the unique registered Fast-ID user link for the
+   configured tenant.
+8. Django clears the existing throttle counter, records a success audit event,
    and creates the normal Django session.
 
-The PoC does not claim independent JWT signature verification because no JWKS
-or public verification key is documented. Production readiness requires either
-a Fast-ID JWKS/public key or a documented token introspection endpoint. Until
-then, the returned token is usable only within the same server-to-server
-finalize response and is never accepted later or from another caller.
+The PoC does not decode or trust the JWT locally. The vendor verification
+endpoint is the identity authority, and its verified subject is mapped to the
+local Django user. Production smoke testing must confirm the deployed API
+version and tenant isolation behavior.
 
 ## Failure and Security Behavior
 
@@ -194,7 +197,7 @@ Automated tests cover:
 - authentication success creates a Django session for the correct active staff
   user;
 - browser-supplied identity tokens are ignored;
-- expired, wrong-issuer, malformed, or unsuccessful Fast-ID responses fail;
+- expired, revoked, unverified, malformed, or unsuccessful Fast-ID responses fail;
 - remote timeout, invalid JSON, and non-2xx responses return generic errors and
   audit safe reason codes;
 - management Token and Client Secret never appear in rendered responses or
@@ -215,8 +218,8 @@ table can remain dormant. No data migration rewrites existing passkey records.
 
 Before enabling Fast-ID as a production authentication provider:
 
-- obtain and implement JWT signature verification through JWKS, a public key,
-  or token introspection;
+- confirm the production Fast-ID endpoint version, response contract, and
+  tenant isolation behavior;
 - replace the previously exposed management token;
 - define management-token rotation and revocation procedures;
 - decide whether to add authenticator listing, renaming, deletion, and tenant
