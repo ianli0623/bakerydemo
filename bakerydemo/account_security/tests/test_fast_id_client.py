@@ -116,6 +116,38 @@ class FastIdClientTests(SimpleTestCase):
             {"id": "credential-id", "type": "public-key"},
         )
 
+    def test_webauthn_calls_accept_vendor_public_key_response_shape(self):
+        def handler(request):
+            if request.url.path.endswith("/registration/initialize"):
+                return httpx.Response(
+                    200,
+                    json={
+                        "publicKey": {
+                            "challenge": "registration-challenge",
+                            "user": {"id": "opaque-user-handle"},
+                        }
+                    },
+                )
+            if request.url.path.endswith("/registration/finalize"):
+                return httpx.Response(200, json={"success": True})
+            return httpx.Response(
+                200,
+                json={"publicKey": {"challenge": "authentication-challenge"}},
+            )
+
+        client = self.client_for(handler)
+
+        registration = client.registration_initialize("user-token")
+        finalized = client.registration_finalize(
+            "user-token",
+            {"id": "credential-id"},
+        )
+        authentication = client.authentication_initialize()
+
+        self.assertEqual(registration["challenge"], "registration-challenge")
+        self.assertTrue(finalized)
+        self.assertEqual(authentication["challenge"], "authentication-challenge")
+
     def test_authentication_finalize_verifies_returned_token_server_side(self):
         requests = []
 

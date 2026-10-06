@@ -403,7 +403,7 @@ class PasskeyLoginViewTests(TestCase):
             self.assertEqual(response.status_code, 403)
 
     @patch("bakerydemo.account_security.passkey_views.cache.get", return_value=None)
-    @patch("bakerydemo.account_security.passkey_views.verify_login_credential")
+    @patch("bakerydemo.account_security.passkey_providers.verify_login_credential")
     def test_cache_read_failure_rejects_login_without_server_error(
         self,
         verify,

@@ -270,7 +270,7 @@ class PasskeyEnrolmentViewTests(TestCase):
             self.client.session,
         )
 
-    @patch("bakerydemo.account_security.passkey_views.complete_registration")
+    @patch("bakerydemo.account_security.passkey_providers.complete_registration")
     def test_registration_challenge_cannot_be_used_for_another_enrolment(
         self,
         complete,
@@ -299,7 +299,7 @@ class PasskeyEnrolmentViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
         complete.assert_not_called()
 
-    @patch("bakerydemo.account_security.passkey_views.complete_registration")
+    @patch("bakerydemo.account_security.passkey_providers.complete_registration")
     def test_successful_verification_logs_user_in_and_consumes_challenge(
         self,
         complete,

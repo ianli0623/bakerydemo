@@ -88,19 +88,37 @@ class FastIdClient:
             raise FastIdError("invalid_response") from exc
         if not isinstance(payload, dict):
             raise FastIdError("invalid_response")
+        return payload
+
+    @staticmethod
+    def _success_data(payload):
         if payload.get("success") is not True:
             raise FastIdError("remote_rejected")
         if "data" not in payload:
             raise FastIdError("invalid_response")
         return payload["data"]
 
+    @classmethod
+    def _public_key_options(cls, payload):
+        if "publicKey" in payload:
+            options = payload["publicKey"]
+        else:
+            data = cls._success_data(payload)
+            options = data.get("publicKey") if isinstance(data, dict) else None
+            if options is None:
+                options = data
+        if not isinstance(options, dict):
+            raise FastIdError("invalid_response")
+        return options
+
     def list_users(self):
         tenant_key = quote(self.tenant_key, safe="")
-        data = self._request(
+        payload = self._request(
             "GET",
             f"/api/tenant/{tenant_key}/users",
             headers={"Authorization": self._bearer(self.management_api_token)},
         )
+        data = self._success_data(payload)
         if not isinstance(data, list):
             raise FastIdError("invalid_response")
         return data
@@ -108,11 +126,12 @@ class FastIdClient:
     def issue_user_token(self, user_id):
         tenant_key = quote(self.tenant_key, safe="")
         external_user_id = quote(user_id, safe="")
-        data = self._request(
+        payload = self._request(
             "POST",
             f"/api/tenant/{tenant_key}/user/{external_user_id}/token",
             auth=self._basic_auth,
         )
+        data = self._success_data(payload)
         token = data.get("token") if isinstance(data, dict) else data
         if not isinstance(token, str) or not token.strip():
             raise FastIdError("invalid_response")
@@ -120,23 +139,24 @@ class FastIdClient:
 
     def registration_initialize(self, user_token):
         tenant_key = quote(self.tenant_key, safe="")
-        data = self._request(
+        payload = self._request(
             "POST",
             f"/api/webauthn/{tenant_key}/registration/initialize",
             headers={"Authorization": self._bearer(user_token)},
         )
-        if not isinstance(data, dict):
-            raise FastIdError("invalid_response")
-        return data
+        return self._public_key_options(payload)
 
     def registration_finalize(self, user_token, credential):
         tenant_key = quote(self.tenant_key, safe="")
-        data = self._request(
+        payload = self._request(
             "POST",
             f"/api/webauthn/{tenant_key}/registration/finalize",
             headers={"Authorization": self._bearer(user_token)},
             json=credential,
         )
+        if payload.get("success") is not True:
+            raise FastIdError("remote_rejected")
+        data = payload.get("data", True)
         if isinstance(data, dict) and data.get("verified") is not True:
             raise FastIdError("invalid_registration")
         if data is False or data is None:
@@ -145,31 +165,31 @@ class FastIdClient:
 
     def authentication_initialize(self):
         tenant_key = quote(self.tenant_key, safe="")
-        data = self._request(
+        payload = self._request(
             "POST",
             f"/api/webauthn/{tenant_key}/authentication/initialize",
         )
-        if not isinstance(data, dict):
-            raise FastIdError("invalid_response")
-        return data
+        return self._public_key_options(payload)
 
     def authentication_finalize(self, credential):
         tenant_key = quote(self.tenant_key, safe="")
-        data = self._request(
+        payload = self._request(
             "POST",
             f"/api/webauthn/{tenant_key}/authentication/finalize",
             json=credential,
         )
+        data = self._success_data(payload)
         token = data.get("token") if isinstance(data, dict) else data
         if not isinstance(token, str) or not token.strip():
             raise FastIdError("invalid_authentication")
 
-        verification = self._request(
+        verification_payload = self._request(
             "POST",
             "/api/webauthn/token/verify",
             auth=self._basic_auth,
             json={"token": token},
         )
+        verification = self._success_data(verification_payload)
         if not isinstance(verification, dict):
             raise FastIdError("invalid_authentication")
         claims = verification.get("claims")

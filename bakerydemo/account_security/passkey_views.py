@@ -1,5 +1,4 @@
 import json
-from binascii import Error as BinasciiError
 from datetime import UTC, datetime
 
 from django import forms
@@ -17,19 +16,16 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 from wagtail.admin import messages
-from webauthn.helpers import base64url_to_bytes
 from webauthn.helpers.exceptions import WebAuthnException
 
+from .fast_id import FastIdError
 from .models import PasskeyCredential, PasskeyEnrolment
+from .passkey_providers import get_passkey_provider
 from .passkeys import (
     PasskeyCeremonyError,
-    build_authentication_options,
-    build_registration_options,
-    complete_registration,
     create_enrolment,
     record_passkey_event,
     validate_enrolment,
-    verify_login_credential,
 )
 
 ENROLMENT_SESSION_KEY = "account_security_passkey_enrolment_id"
@@ -47,6 +43,11 @@ GENERIC_LOGIN_ERROR = _(
     "Windows Hello sign-in could not be completed. Please try again."
 )
 cache = caches[getattr(settings, "ACCOUNT_SECURITY_PASSKEY_CACHE_ALIAS", "default")]
+FAST_ID_SERVICE_FAILURES = {
+    "remote_timeout",
+    "remote_unavailable",
+    "remote_http_error",
+}
 
 
 class PasskeyThrottleUnavailable(Exception):
@@ -217,6 +218,11 @@ def _forbidden_json(message):
     return JsonResponse({"error": str(message)}, status=403)
 
 
+def _fast_id_failure_json(message, error):
+    status = 503 if error.reason in FAST_ID_SERVICE_FAILURES else 403
+    return JsonResponse({"error": str(message)}, status=status)
+
+
 @require_POST
 def passkey_registration_options(request):
     request.session.pop(REGISTRATION_CHALLENGE_SESSION_KEY, None)
@@ -224,15 +230,34 @@ def passkey_registration_options(request):
     if enrolment is None:
         return HttpResponseForbidden()
 
-    options_json = build_registration_options(enrolment.user)
-    options = json.loads(options_json)
+    provider = get_passkey_provider()
+    try:
+        started = provider.start_registration(enrolment.user)
+    except FastIdError as error:
+        record_passkey_event(
+            "registration_failed",
+            success=False,
+            user=enrolment.user,
+            request=request,
+            reason=error.reason,
+        )
+        return _fast_id_failure_json(GENERIC_REGISTRATION_ERROR, error)
+    except PasskeyCeremonyError as error:
+        record_passkey_event(
+            "registration_failed",
+            success=False,
+            user=enrolment.user,
+            request=request,
+            reason=str(error),
+        )
+        return _forbidden_json(GENERIC_REGISTRATION_ERROR)
+
     request.session[REGISTRATION_CHALLENGE_SESSION_KEY] = {
-        "challenge": options["challenge"],
-        "user_handle": options["user"]["id"],
+        **started.state,
         "enrolment_id": enrolment.pk,
         "issued_at": timezone.now().timestamp(),
     }
-    return JsonResponse(options)
+    return JsonResponse(started.options)
 
 
 def _pop_valid_registration_challenge(request, enrolment_id):
@@ -241,17 +266,18 @@ def _pop_valid_registration_challenge(request, enrolment_id):
         return None
     try:
         issued_at = datetime.fromtimestamp(float(state["issued_at"]), tz=UTC)
-        challenge = base64url_to_bytes(state["challenge"])
-        user_handle = base64url_to_bytes(state["user_handle"])
         state_enrolment_id = int(state["enrolment_id"])
-    except (BinasciiError, KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError):
         return None
     if state_enrolment_id != enrolment_id:
         return None
     ttl = settings.ACCOUNT_SECURITY_WEBAUTHN_CHALLENGE_TTL_SECONDS
     if (timezone.now() - issued_at).total_seconds() >= ttl:
         return None
-    return challenge, user_handle
+    provider_state = state.copy()
+    provider_state.pop("enrolment_id", None)
+    provider_state.pop("issued_at", None)
+    return provider_state
 
 
 @require_POST
@@ -287,18 +313,24 @@ def passkey_registration_verify(request):
         )
         return _forbidden_json(GENERIC_REGISTRATION_ERROR)
 
-    challenge, user_handle = challenge_state
+    provider = get_passkey_provider()
     try:
-        credential = complete_registration(
+        result = provider.finish_registration(
             user=enrolment.user,
             enrolment=enrolment,
             credential_payload=credential_payload,
-            challenge=challenge,
-            user_handle=user_handle,
+            state=challenge_state,
             transports=transports,
         )
-    except (IntegrityError, PasskeyCeremonyError, WebAuthnException) as error:
-        if isinstance(error, PasskeyCeremonyError):
+    except (
+        FastIdError,
+        IntegrityError,
+        PasskeyCeremonyError,
+        WebAuthnException,
+    ) as error:
+        if isinstance(error, FastIdError):
+            reason = error.reason
+        elif isinstance(error, PasskeyCeremonyError):
             reason = str(error)
         elif isinstance(error, IntegrityError):
             reason = "duplicate_credential"
@@ -311,19 +343,21 @@ def passkey_registration_verify(request):
             request=request,
             reason=reason,
         )
+        if isinstance(error, FastIdError):
+            return _fast_id_failure_json(GENERIC_REGISTRATION_ERROR, error)
         return _forbidden_json(GENERIC_REGISTRATION_ERROR)
 
     request.session.pop(ENROLMENT_SESSION_KEY, None)
     record_passkey_event(
         "registration_succeeded",
         success=True,
-        user=enrolment.user,
-        credential=credential,
+        user=result.user,
+        credential=result.credential,
         request=request,
     )
     login(
         request,
-        enrolment.user,
+        result.user,
         backend="bakerydemo.account_security.authentication.EmailAuthenticationBackend",
     )
     return JsonResponse({"redirect": reverse("wagtailadmin_home")})
@@ -335,12 +369,31 @@ def passkey_login(request):
 
 @require_POST
 def passkey_authentication_options(request):
-    options = json.loads(build_authentication_options())
+    request.session.pop(AUTHENTICATION_CHALLENGE_SESSION_KEY, None)
+    provider = get_passkey_provider()
+    try:
+        started = provider.start_authentication()
+    except FastIdError as error:
+        record_passkey_event(
+            "login_failed",
+            success=False,
+            request=request,
+            reason=error.reason,
+        )
+        return _fast_id_failure_json(GENERIC_LOGIN_ERROR, error)
+    except PasskeyCeremonyError as error:
+        record_passkey_event(
+            "login_failed",
+            success=False,
+            request=request,
+            reason=str(error),
+        )
+        return _forbidden_json(GENERIC_LOGIN_ERROR)
     request.session[AUTHENTICATION_CHALLENGE_SESSION_KEY] = {
-        "challenge": options["challenge"],
+        **started.state,
         "issued_at": timezone.now().timestamp(),
     }
-    return JsonResponse(options)
+    return JsonResponse(started.options)
 
 
 def _pop_valid_authentication_challenge(request):
@@ -349,13 +402,14 @@ def _pop_valid_authentication_challenge(request):
         return None
     try:
         issued_at = datetime.fromtimestamp(float(state["issued_at"]), tz=UTC)
-        challenge = base64url_to_bytes(state["challenge"])
-    except (BinasciiError, KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError):
         return None
     ttl = settings.ACCOUNT_SECURITY_WEBAUTHN_CHALLENGE_TTL_SECONDS
     if (timezone.now() - issued_at).total_seconds() >= ttl:
         return None
-    return challenge
+    provider_state = state.copy()
+    provider_state.pop("issued_at", None)
+    return provider_state
 
 
 @require_POST
@@ -364,6 +418,8 @@ def passkey_authentication_verify(request):
     try:
         payload = json.loads(request.body)
         credential_payload = payload["credential"]
+        if not isinstance(credential_payload, dict):
+            raise TypeError
         credential_id = credential_payload.get("id")
         if not isinstance(credential_id, str):
             credential_id = None
@@ -380,19 +436,30 @@ def passkey_authentication_verify(request):
         _pop_valid_authentication_challenge(request)
         return _rate_limited_json(request, reason="failure_limit_reached")
 
-    challenge = _pop_valid_authentication_challenge(request)
-    if challenge is None:
+    provider_state = _pop_valid_authentication_challenge(request)
+    if provider_state is None:
         return _reject_passkey_login(
             request,
             credential_id,
             "invalid_challenge",
         )
 
+    provider = get_passkey_provider()
     try:
-        credential = verify_login_credential(
+        result = provider.finish_authentication(
             credential_payload=credential_payload,
-            challenge=challenge,
+            state=provider_state,
         )
+    except FastIdError as error:
+        if error.reason in FAST_ID_SERVICE_FAILURES:
+            record_passkey_event(
+                "login_failed",
+                success=False,
+                request=request,
+                reason=error.reason,
+            )
+            return _fast_id_failure_json(GENERIC_LOGIN_ERROR, error)
+        return _reject_passkey_login(request, credential_id, error.reason)
     except (PasskeyCeremonyError, WebAuthnException) as error:
         reason = (
             str(error)
@@ -408,13 +475,13 @@ def passkey_authentication_verify(request):
     record_passkey_event(
         "login_succeeded",
         success=True,
-        user=credential.user,
-        credential=credential,
+        user=result.user,
+        credential=result.credential,
         request=request,
     )
     login(
         request,
-        credential.user,
+        result.user,
         backend="bakerydemo.account_security.authentication.EmailAuthenticationBackend",
     )
     return JsonResponse({"redirect": reverse("wagtailadmin_home")})
