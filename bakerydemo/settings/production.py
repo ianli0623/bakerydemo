@@ -70,9 +70,7 @@ FAST_ID_MANAGEMENT_API_TOKEN = os.environ.get(
 FAST_ID_RP_ID = os.environ.get("FAST_ID_RP_ID", "")
 FAST_ID_ORIGIN = os.environ.get("FAST_ID_ORIGIN", "")
 try:
-    FAST_ID_TIMEOUT_SECONDS = float(
-        os.environ.get("FAST_ID_TIMEOUT_SECONDS", "5")
-    )
+    FAST_ID_TIMEOUT_SECONDS = float(os.environ.get("FAST_ID_TIMEOUT_SECONDS", "5"))
 except ValueError:
     FAST_ID_TIMEOUT_SECONDS = 0.0
 

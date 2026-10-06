@@ -50,9 +50,7 @@ def _check_fast_id_settings():
         "FAST_ID_RP_ID",
         "FAST_ID_ORIGIN",
     )
-    missing_names = [
-        name for name in required_names if not getattr(settings, name, "")
-    ]
+    missing_names = [name for name in required_names if not getattr(settings, name, "")]
     if missing_names:
         return [
             Error(
