@@ -1,16 +1,39 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import translation
 
+from bakerydemo.account_security.fast_id import FastIdError
 from bakerydemo.account_security.forms import (
+    AccountAliasForm,
     SecureUserEditForm,
     TemporaryPasswordUserCreationForm,
 )
-from bakerydemo.account_security.models import PasskeyEnrolment
+from bakerydemo.account_security.models import FastIdUserLink, PasskeyEnrolment
 from bakerydemo.account_security.services import sync_password_change
+
+
+class AccountAliasFormTests(SimpleTestCase):
+    def test_email_account_id_is_displayed_as_disabled(self):
+        user = get_user_model()(
+            username="visible-alias",
+            email="account.id@example.com",
+        )
+        form = AccountAliasForm(
+            {
+                "username": "updated-alias",
+                "email": "attacker@example.com",
+            },
+            instance=user,
+        )
+
+        self.assertIn("email", form.fields)
+        self.assertEqual(form["email"].value(), "account.id@example.com")
+        self.assertTrue(form.fields["email"].disabled)
 
 
 class TemporaryPasswordUserCreationTests(TestCase):
@@ -177,11 +200,37 @@ class TemporaryPasswordUserCreationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["view"].get_page_subtitle(), "visible-alias")
 
-    def test_account_profile_does_not_allow_account_id_email_changes(self):
+    def test_account_profile_displays_account_id_email_as_disabled(self):
         response = self.client.get(reverse("wagtailadmin_account"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, 'name="name_email-email"')
+        name_panel = next(
+            panel
+            for panels in response.context["panels_by_tab"].values()
+            for panel in panels
+            if panel.name == "name_email"
+        )
+        form = name_panel.get_form()
+        self.assertEqual(form["email"].value(), "admin@example.com")
+        self.assertTrue(form.fields["email"].disabled)
+        self.assertContains(response, 'name="name_email-email"')
+        self.assertContains(response, "admin@example.com")
+
+    def test_account_profile_ignores_submitted_account_id_email(self):
+        form = AccountAliasForm(
+            {
+                "username": "updated-alias",
+                "email": "attacker@example.com",
+            },
+            instance=self.admin,
+        )
+
+        self.assertTrue(form.fields["email"].disabled)
+        self.assertTrue(form.is_valid())
+        form.save()
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.username, "updated-alias")
+        self.assertEqual(self.admin.email, "admin@example.com")
 
     def test_user_list_uses_email_as_account_id_and_username_as_alias(self):
         get_user_model().objects.create_user(
@@ -304,6 +353,88 @@ class TemporaryPasswordUserCreationTests(TestCase):
         self.assertContains(response, raw_code)
         self.assertNotEqual(enrolment.code_digest, raw_code)
         self.assertNotIn(raw_code, str(dict(self.client.session)))
+
+    @override_settings(FAST_ID_ENABLED=True, FAST_ID_TENANT_KEY="tenant-key")
+    def test_windows_hello_user_is_provisioned_in_fast_id_before_code_is_issued(self):
+        class ProvisioningClient:
+            def __init__(self):
+                self.created_users = []
+
+            def list_users(self):
+                return []
+
+            def create_user(self, email, name):
+                self.created_users.append({"email": email, "name": name})
+                return {
+                    "id": "external-1",
+                    "email": email,
+                    "name": name,
+                    "enabled": True,
+                }
+
+        fast_id_client = ProvisioningClient()
+
+        with patch(
+            "bakerydemo.account_security.passkey_providers.FastIdClient.from_settings",
+            return_value=fast_id_client,
+        ):
+            response = self.client.post(
+                reverse("wagtailusers_users:add"),
+                {
+                    "username": "fast-id-display",
+                    "email": "FAST.ID.USER@example.com",
+                    "authentication_method": "windows_hello",
+                    "groups": [self.editor_group.pk],
+                },
+            )
+
+        user = get_user_model().objects.get(username="fast-id-display")
+        link = FastIdUserLink.objects.get(user=user)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            fast_id_client.created_users,
+            [
+                {
+                    "email": "fast.id.user@example.com",
+                    "name": "fast-id-display",
+                }
+            ],
+        )
+        self.assertEqual(link.tenant_key, "tenant-key")
+        self.assertEqual(link.external_user_id, "external-1")
+        self.assertTrue(PasskeyEnrolment.objects.filter(user=user).exists())
+
+    @override_settings(FAST_ID_ENABLED=True, FAST_ID_TENANT_KEY="tenant-key")
+    def test_fast_id_failure_rolls_back_windows_hello_user_and_code(self):
+        class FailingProvisioningClient:
+            def list_users(self):
+                raise FastIdError("remote_http_error")
+
+        with patch(
+            "bakerydemo.account_security.passkey_providers.FastIdClient.from_settings",
+            return_value=FailingProvisioningClient(),
+        ):
+            response = self.client.post(
+                reverse("wagtailusers_users:add"),
+                {
+                    "username": "unsynchronised-user",
+                    "email": "unsynchronised@example.com",
+                    "authentication_method": "windows_hello",
+                    "groups": [self.editor_group.pk],
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            get_user_model().objects.filter(username="unsynchronised-user").exists()
+        )
+        self.assertFalse(PasskeyEnrolment.objects.exists())
+        self.assertContains(
+            response,
+            translation.gettext(
+                "The Fast-ID account could not be created. Please try again."
+            ),
+        )
 
     def test_user_creation_requires_a_group_or_administrator_role(self):
         for authentication_method in ("temporary_password", "windows_hello"):

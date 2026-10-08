@@ -25,12 +25,22 @@ TEMPORARY_PASSWORD_SYMBOLS = "!@#$%^*-_=+"
 
 
 class AccountAliasForm(forms.ModelForm):
+    email = forms.EmailField(
+        label=_("Email (account ID)"),
+        required=False,
+        disabled=True,
+        help_text=_(
+            "This field is for display only. Contact an administrator to change it."
+        ),
+    )
+
     class Meta:
         model = get_user_model()
         fields = ["username"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.initial["email"] = self.instance.email
         self.fields["username"].label = _("Alias / display name")
         self.fields["username"].help_text = _(
             "Used only for display. Sign-in uses the email account ID."

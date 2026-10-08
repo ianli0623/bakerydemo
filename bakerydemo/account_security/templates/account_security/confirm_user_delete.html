@@ -1,0 +1,27 @@
+{% extends "wagtailusers/users/confirm_delete.html" %}
+{% load i18n %}
+
+{% block confirmation_message %}
+    {{ block.super }}
+    {% if show_fast_id_deletion_warning %}
+        <p>
+            {% translate "Deleting this account will also permanently delete its Fast-ID Tenant User and server-side credentials." %}
+        </p>
+    {% endif %}
+    {% if fast_id_deletion_blocked %}
+        <p>{% translate "Fast-ID is disabled, so a linked account cannot be deleted safely. Enable Fast-ID first." %}</p>
+    {% endif %}
+    {% if show_passkey_cleanup_reminder %}
+        <p>
+            {% translate "After deleting the account, remove the lularm.com passkey in Windows Settings > Accounts > Passkeys to avoid duplicate passkeys later." %}
+        </p>
+    {% endif %}
+{% endblock confirmation_message %}
+
+{% block form %}
+    {% if fast_id_deletion_blocked %}
+        <a href="{{ view.get_success_url }}" class="button button-secondary">{% translate "Go back" %}</a>
+    {% else %}
+        {{ block.super }}
+    {% endif %}
+{% endblock form %}

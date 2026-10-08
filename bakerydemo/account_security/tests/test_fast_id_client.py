@@ -48,7 +48,84 @@ class FastIdClientTests(SimpleTestCase):
 
         self.assertEqual(users[0]["id"], "external-1")
 
-    def test_issue_user_token_uses_basic_client_credentials(self):
+    def test_create_user_sends_identity_with_management_bearer(self):
+        def handler(request):
+            self.assertEqual(request.method, "POST")
+            self.assertEqual(request.url.path, "/api/tenant/tenant-key/user")
+            self.assertEqual(
+                request.headers["authorization"],
+                "Bearer management-token",
+            )
+            self.assertEqual(
+                json.loads(request.content),
+                {
+                    "email": "person@example.com",
+                    "name": "Display Name",
+                },
+            )
+            return httpx.Response(
+                200,
+                json={
+                    "success": True,
+                    "data": {
+                        "id": "external-1",
+                        "email": "person@example.com",
+                        "name": "Display Name",
+                        "enabled": True,
+                    },
+                },
+            )
+
+        user = self.client_for(handler).create_user(
+            "person@example.com",
+            "Display Name",
+        )
+
+        self.assertEqual(user["id"], "external-1")
+        self.assertEqual(user["email"], "person@example.com")
+
+    def test_delete_user_uses_management_bearer(self):
+        def handler(request):
+            self.assertEqual(request.method, "DELETE")
+            self.assertEqual(
+                request.url.path,
+                "/api/tenant/tenant-key/user/external-1",
+            )
+            self.assertEqual(
+                request.headers["authorization"],
+                "Bearer management-token",
+            )
+            return httpx.Response(200, json={"success": True})
+
+        deleted = self.client_for(handler).delete_user("external-1")
+
+        self.assertTrue(deleted)
+
+    def test_delete_user_treats_missing_remote_user_as_already_deleted(self):
+        client = self.client_for(lambda request: httpx.Response(404))
+
+        deleted = client.delete_user("missing-user")
+
+        self.assertFalse(deleted)
+
+    def test_delete_user_accepts_no_content_success(self):
+        client = self.client_for(lambda request: httpx.Response(204))
+
+        deleted = client.delete_user("external-1")
+
+        self.assertTrue(deleted)
+
+    def test_delete_user_rejects_unsuccessful_response(self):
+        client = self.client_for(
+            lambda request: httpx.Response(200, json={"success": False})
+        )
+
+        with self.assertRaises(FastIdError) as caught:
+            client.delete_user("external-1")
+
+        self.assertEqual(caught.exception.reason, "remote_rejected")
+
+    def test_issue_user_token_uses_one_management_bearer_prefix(self):
         def handler(request):
             self.assertEqual(request.method, "POST")
             self.assertEqual(
@@ -57,7 +134,7 @@ class FastIdClientTests(SimpleTestCase):
             )
             self.assertEqual(
                 request.headers["authorization"],
-                "Basic Y2xpZW50LWlkOmNsaWVudC1zZWNyZXQ=",
+                "Bearer management-token",
             )
             return httpx.Response(
                 200,

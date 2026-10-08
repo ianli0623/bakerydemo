@@ -61,7 +61,16 @@ class FastIdClient:
     def _basic_auth(self):
         return httpx.BasicAuth(self.client_id, self.client_secret)
 
-    def _request(self, method, path, *, auth=None, headers=None, json=None):
+    def _request(
+        self,
+        method,
+        path,
+        *,
+        auth=None,
+        headers=None,
+        json=None,
+        accepted_statuses=(),
+    ):
         try:
             with httpx.Client(
                 base_url=self.base_url,
@@ -80,6 +89,8 @@ class FastIdClient:
         except httpx.HTTPError as exc:
             raise FastIdError("remote_unavailable") from exc
 
+        if response.status_code in accepted_statuses:
+            return response.status_code
         if not response.is_success:
             raise FastIdError("remote_http_error")
         try:
@@ -123,13 +134,43 @@ class FastIdClient:
             raise FastIdError("invalid_response")
         return data
 
+    def create_user(self, email, name):
+        tenant_key = quote(self.tenant_key, safe="")
+        payload = self._request(
+            "POST",
+            f"/api/tenant/{tenant_key}/user",
+            headers={"Authorization": self._bearer(self.management_api_token)},
+            json={"email": email, "name": name},
+        )
+        data = self._success_data(payload)
+        if not isinstance(data, dict):
+            raise FastIdError("invalid_response")
+        return data
+
+    def delete_user(self, user_id):
+        tenant_key = quote(self.tenant_key, safe="")
+        external_user_id = quote(user_id, safe="")
+        payload = self._request(
+            "DELETE",
+            f"/api/tenant/{tenant_key}/user/{external_user_id}",
+            headers={"Authorization": self._bearer(self.management_api_token)},
+            accepted_statuses=(204, 404),
+        )
+        if payload == 404:
+            return False
+        if payload == 204:
+            return True
+        if payload.get("success") is not True:
+            raise FastIdError("remote_rejected")
+        return True
+
     def issue_user_token(self, user_id):
         tenant_key = quote(self.tenant_key, safe="")
         external_user_id = quote(user_id, safe="")
         payload = self._request(
             "POST",
             f"/api/tenant/{tenant_key}/user/{external_user_id}/token",
-            auth=self._basic_auth,
+            headers={"Authorization": self._bearer(self.management_api_token)},
         )
         data = self._success_data(payload)
         token = data.get("token") if isinstance(data, dict) else data

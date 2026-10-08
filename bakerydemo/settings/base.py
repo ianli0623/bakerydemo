@@ -312,8 +312,9 @@ LOGGING = {
     },
 }
 
-# Override in local settings or replace with your own key. Please don't use our demo key in production!
-GOOGLE_MAP_API_KEY = "AIzaSyD31CT9P9KxvNUJOwDq2kcFEIG8ADgaFgw"
+# Use a Google Maps API key that is restricted to the required APIs and origins.
+# Never commit a real key to the repository.
+GOOGLE_MAP_API_KEY = os.environ.get("GOOGLE_MAP_API_KEY", "")
 
 # Use Elasticsearch as the search backend for extra performance and better search results
 WAGTAILSEARCH_BACKENDS = {

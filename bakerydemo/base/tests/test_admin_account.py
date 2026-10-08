@@ -66,15 +66,16 @@ class AdminAccountSettingsTests(TestCase):
             content_type="image/png",
         )
 
-    def test_account_profile_displays_alias_instead_of_structured_name_fields(self):
+    def test_account_profile_displays_alias_and_read_only_email(self):
         response = self.client.get(reverse("wagtailadmin_account"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="name_email-username"')
         self.assertContains(response, 'value="admin-avatar"')
+        self.assertContains(response, 'name="name_email-email"')
+        self.assertContains(response, 'value="admin-avatar@example.com"')
         self.assertNotContains(response, 'name="name_email-first_name"')
         self.assertNotContains(response, 'name="name_email-last_name"')
-        self.assertNotContains(response, 'name="name_email-email"')
 
     def test_account_profile_saves_alias_without_changing_account_id(self):
         original_email = self.user.email

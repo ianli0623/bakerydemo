@@ -42,6 +42,7 @@ print(json.dumps({{
     "fast_id_rp_id": getattr(s, "FAST_ID_RP_ID", ""),
     "fast_id_origin": getattr(s, "FAST_ID_ORIGIN", ""),
     "fast_id_timeout": getattr(s, "FAST_ID_TIMEOUT_SECONDS", None),
+    "google_map_api_key": getattr(s, "GOOGLE_MAP_API_KEY", ""),
 }}))
 '''
         environment = os.environ.copy()
@@ -61,6 +62,7 @@ print(json.dumps({{
             "FAST_ID_RP_ID",
             "FAST_ID_ORIGIN",
             "FAST_ID_TIMEOUT_SECONDS",
+            "GOOGLE_MAP_API_KEY",
         ):
             environment.pop(key, None)
         environment.update(extra_env or {})
@@ -148,6 +150,22 @@ print(json.dumps({{
 
         self.assertFalse(production["fast_id_enabled"])
         self.assertEqual(production["fast_id_timeout"], 5.0)
+
+    def test_google_map_api_key_is_empty_by_default(self):
+        settings = self._read_settings("bakerydemo.settings.test")
+
+        self.assertEqual(settings["google_map_api_key"], "")
+
+    def test_google_map_api_key_is_loaded_from_environment(self):
+        settings = self._read_settings(
+            "bakerydemo.settings.test",
+            {"GOOGLE_MAP_API_KEY": "test-google-map-api-key"},
+        )
+
+        self.assertEqual(
+            settings["google_map_api_key"],
+            "test-google-map-api-key",
+        )
 
     def test_production_loads_fast_id_settings_without_printing_secrets(self):
         production = self._read_settings(

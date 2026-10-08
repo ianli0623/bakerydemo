@@ -9,6 +9,9 @@ from .passkey_views import (
     passkey_revoke,
 )
 from .reports import password_expiry_report
+from .user_bulk_actions import SecureDeleteBulkAction
+
+hooks.register("register_bulk_action", SecureDeleteBulkAction, order=100)
 
 
 class PasswordExpiryReportMenuItem(MenuItem):

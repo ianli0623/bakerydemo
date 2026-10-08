@@ -4,8 +4,8 @@
 
 Add an opt-in Fast-ID passkey provider to the existing Wagtail account security
 flow without removing or weakening the current local Windows Hello
-implementation. The PoC proves registration and sign-in for the two existing
-Fast-ID tenant users while preserving password sign-in as a recovery path.
+implementation. The PoC proves automatic Tenant User lifecycle management,
+registration, and sign-in while preserving password sign-in as a recovery path.
 
 ## Scope
 
@@ -13,7 +13,7 @@ The PoC includes:
 
 - a `FAST_ID_ENABLED` feature flag;
 - server-side Fast-ID configuration and validation;
-- lookup and local mapping of an existing Fast-ID tenant user by email;
+- creation, deletion, lookup, and local mapping of a Fast-ID tenant user by email;
 - passkey registration through Fast-ID;
 - passkey authentication through Fast-ID followed by a Django session login;
 - the existing enrolment-code authorization before registration;
@@ -22,7 +22,6 @@ The PoC includes:
 
 The PoC excludes:
 
-- automatic creation of Fast-ID tenant users;
 - authenticator listing, renaming, and deletion;
 - migration of existing local passkey credentials to Fast-ID;
 - removal of password authentication;
@@ -51,7 +50,7 @@ The Fast-ID provider reads these environment variables through Django settings:
 - `FAST_ID_TENANT_ID`, required when enabled;
 - `FAST_ID_TENANT_KEY`, required when enabled;
 - `FAST_ID_CLIENT_ID`, retained for the documented tenant configuration;
-- `FAST_ID_CLIENT_SECRET`, required for the documented HTTP Basic token operations;
+- `FAST_ID_CLIENT_SECRET`, required for the documented HTTP Basic login-token verification;
 - `FAST_ID_MANAGEMENT_API_TOKEN`, required when enabled;
 - `FAST_ID_RP_ID`, required when enabled;
 - `FAST_ID_ORIGIN`, required when enabled;
@@ -74,7 +73,9 @@ Fast-ID is disabled.
 A focused client owns all remote paths, JSON encoding, authorization headers,
 timeouts, response validation, and exception normalization. It supports:
 
+- `POST /api/tenant/{tenant_key}/user`;
 - `GET /api/tenant/{tenant_key}/users`;
+- `DELETE /api/tenant/{tenant_key}/user/{user_id}`;
 - `POST /api/tenant/{tenant_key}/user/{user_id}/token`;
 - `POST /api/webauthn/{tenant_key}/registration/initialize`;
 - `POST /api/webauthn/{tenant_key}/registration/finalize`;
@@ -107,10 +108,29 @@ stores the tenant key, external user ID, registration timestamp, and normal
 created/updated timestamps. It does not store a credential public key, a user
 token, the management token, or the Client Secret.
 
-When a link does not exist, the provider loads tenant users from Fast-ID and
-matches the normalized email case-insensitively. It rejects missing, duplicate,
-empty, or mismatched records and creates the local link only after an unambiguous
-match. It never creates a Fast-ID tenant user during the PoC.
+When a newly created Wagtail Windows Hello user is provisioned, the provider
+requires that no matching Tenant User already exists, creates one through the
+Fast-ID management API, validates the returned ID and normalized email, and then
+stores the local link. This prevents a deleted and recreated local account from
+silently inheriting an old remote authenticator. Existing Django users entering
+registration may still resolve exactly one pre-created Tenant User by normalized
+email as a migration path. Missing, duplicate, empty, or mismatched records are
+rejected. If saving the local link fails after remote creation, Django attempts
+to remove the newly created remote Tenant User.
+
+## Account Lifecycle
+
+- A new Wagtail Windows Hello user is created in Fast-ID before an enrolment code
+  is issued. A remote provisioning failure prevents local account creation.
+- Deleting a linked account first disables it locally, deletes the Fast-ID Tenant
+  User, and then deletes the local account. A remote failure restores the prior
+  active state. If the remote deletion succeeds but the local deletion fails,
+  the local linked account remains inactive so the operation can be retried
+  safely. A missing remote record is treated as an idempotent success.
+- Linked single and bulk deletions are blocked while `FAST_ID_ENABLED=false`,
+  because Django cannot safely remove the remote identity in that state.
+- The confirmation page warns that the local account and remote Tenant User are
+  deleted permanently. Device-resident passkeys may still require user cleanup.
 
 ## Registration Flow
 
@@ -171,6 +191,8 @@ version and tenant isolation behavior.
 - Existing CSRF protection, one-time session state, challenge TTL, login
   throttling, secure cookies, and staff checks remain in force.
 - Email is the authentication identifier; username remains a display alias.
+- Fast-ID user creation must return the requested normalized email and a
+  non-empty external ID before Django stores the link.
 - Registration and authentication state is removed after success, failure, or
   expiry so a user token cannot be replayed through Django.
 
@@ -192,6 +214,9 @@ Automated tests cover:
 - enabled-setting validation and safe token normalization;
 - tenant-user lookup by normalized email and rejection of missing or duplicate
   matches;
+- automatic Tenant User creation and deletion, returned-identity validation,
+  compensation after local persistence failure, and safe retry after partial
+  deletion;
 - registration initialize/finalize success and single-use state;
 - password remains usable after Fast-ID registration;
 - authentication success creates a Django session for the correct active staff
@@ -205,14 +230,15 @@ Automated tests cover:
 
 The focused account-security test suite, Django system checks, and the full
 repository lint command must pass. Live testing is a separate manual smoke test
-on `https://lularm.com` using the two pre-created tenant users and a rotated
-management token.
+on `https://lularm.com` using dedicated test users created through Wagtail and a
+rotated management token.
 
 ## Rollback
 
 Setting `FAST_ID_ENABLED=false` restores the existing local Windows Hello
 provider without deleting local credentials or Fast-ID links. The new mapping
 table can remain dormant. No data migration rewrites existing passkey records.
+Deletion of a linked account remains blocked until Fast-ID is enabled again.
 
 ## Production Follow-up
 
@@ -222,7 +248,8 @@ Before enabling Fast-ID as a production authentication provider:
   tenant isolation behavior;
 - replace the previously exposed management token;
 - define management-token rotation and revocation procedures;
-- decide whether to add authenticator listing, renaming, deletion, and tenant
-  user provisioning;
+- decide whether to add authenticator listing, renaming, and deletion;
+- add scheduled reconciliation for the rare case where a process terminates
+  between the remote and local lifecycle operations;
 - confirm whether Client Credentials should replace the long-lived management
   token.

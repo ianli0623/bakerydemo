@@ -1,10 +1,11 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from bakerydemo.account_security.fast_id import FastIdAuthenticationResult
+from bakerydemo.account_security.fast_id import FastIdAuthenticationResult, FastIdError
 from bakerydemo.account_security.models import (
     FastIdUserLink,
     PasskeyCredential,
@@ -29,14 +30,29 @@ class FakeFastIdClient:
     def __init__(self, *, users=None, external_user_id="external-1"):
         self.users = users or []
         self.external_user_id = external_user_id
+        self.created_users = []
+        self.deleted_user_ids = []
         self.registration_payload = None
         self.authentication_payload = None
 
     def list_users(self):
         return self.users
 
+    def create_user(self, email, name):
+        self.created_users.append({"email": email, "name": name})
+        return {
+            "id": self.external_user_id,
+            "email": email,
+            "name": name,
+            "enabled": True,
+        }
+
     def issue_user_token(self, user_id):
         return f"token-for-{user_id}"
+
+    def delete_user(self, user_id):
+        self.deleted_user_ids.append(user_id)
+        return True
 
     def registration_initialize(self, user_token):
         return {
@@ -183,6 +199,147 @@ class FastIdPasskeyProviderTests(TestCase):
         )
         return FastIdPasskeyProvider(client=client), client
 
+    def test_provision_user_creates_missing_tenant_user_and_link(self):
+        provider, client = self.provider(users=[])
+
+        link = provider.provision_user(self.user)
+
+        self.assertEqual(
+            client.created_users,
+            [
+                {
+                    "email": "person@example.com",
+                    "name": "Display Name",
+                }
+            ],
+        )
+        self.assertEqual(link.user, self.user)
+        self.assertEqual(link.tenant_key, "tenant-key")
+        self.assertEqual(link.external_user_id, "external-1")
+
+    def test_provision_user_rejects_mismatched_created_email(self):
+        class MismatchedCreationClient(FakeFastIdClient):
+            def create_user(self, email, name):
+                created = super().create_user(email, name)
+                created["email"] = "different@example.com"
+                return created
+
+        client = MismatchedCreationClient(users=[])
+        provider = FastIdPasskeyProvider(client=client)
+
+        with self.assertRaises(PasskeyCeremonyError) as caught:
+            provider.provision_user(self.user)
+
+        self.assertEqual(str(caught.exception), "fast_id_user_mismatch")
+        self.assertEqual(client.deleted_user_ids, [])
+        self.assertFalse(FastIdUserLink.objects.filter(user=self.user).exists())
+
+    def test_provision_user_rejects_pre_existing_remote_user(self):
+        provider, client = self.provider(
+            users=[
+                {
+                    "id": "existing-external-user",
+                    "email": "person@example.com",
+                    "enabled": True,
+                }
+            ]
+        )
+
+        with self.assertRaises(PasskeyCeremonyError) as caught:
+            provider.provision_user(self.user)
+
+        self.assertEqual(str(caught.exception), "fast_id_user_exists")
+        self.assertEqual(client.created_users, [])
+        self.assertFalse(FastIdUserLink.objects.filter(user=self.user).exists())
+
+    def test_provision_user_removes_remote_user_if_link_cannot_be_saved(self):
+        provider, client = self.provider(users=[])
+
+        with (
+            patch.object(
+                FastIdUserLink.objects,
+                "create",
+                side_effect=IntegrityError("link could not be saved"),
+            ),
+            self.assertRaises(PasskeyCeremonyError) as caught,
+        ):
+            provider.provision_user(self.user)
+
+        self.assertEqual(str(caught.exception), "fast_id_link_conflict")
+        self.assertEqual(client.deleted_user_ids, ["external-1"])
+
+    def test_provisioning_cleanup_log_does_not_include_remote_exception(self):
+        class FailingCleanupClient(FakeFastIdClient):
+            def delete_user(self, user_id):
+                try:
+                    raise RuntimeError("client-secret management-token")
+                except RuntimeError as exc:
+                    raise FastIdError("remote_unavailable") from exc
+
+        client = FailingCleanupClient(users=[])
+        provider = FastIdPasskeyProvider(client=client)
+
+        with (
+            patch.object(
+                FastIdUserLink.objects,
+                "create",
+                side_effect=IntegrityError("link could not be saved"),
+            ),
+            self.assertLogs(
+                "bakerydemo.account_security.passkey_providers",
+                level="ERROR",
+            ) as captured,
+            self.assertRaises(PasskeyCeremonyError),
+        ):
+            provider.provision_user(self.user)
+
+        log_output = "\n".join(captured.output)
+        self.assertNotIn("client-secret", log_output)
+        self.assertNotIn("management-token", log_output)
+
+    def test_registration_rejects_missing_remote_user_without_creating_one(self):
+        provider, client = self.provider(users=[])
+
+        with self.assertRaises(PasskeyCeremonyError) as caught:
+            provider.start_registration(self.user)
+
+        self.assertEqual(str(caught.exception), "fast_id_user_not_found")
+        self.assertEqual(client.created_users, [])
+
+    def test_deprovision_user_deletes_linked_tenant_user(self):
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-key",
+            external_user_id="external-1",
+        )
+        provider, client = self.provider()
+
+        provider.deprovision_user(self.user)
+
+        self.assertEqual(client.deleted_user_ids, ["external-1"])
+        self.assertTrue(FastIdUserLink.objects.filter(user=self.user).exists())
+
+    def test_deprovision_user_without_link_does_not_call_fast_id(self):
+        provider, client = self.provider()
+
+        provider.deprovision_user(self.user)
+
+        self.assertEqual(client.deleted_user_ids, [])
+
+    def test_deprovision_user_rejects_link_from_another_tenant(self):
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="other-tenant",
+            external_user_id="external-1",
+        )
+        provider, client = self.provider()
+
+        with self.assertRaises(PasskeyCeremonyError) as caught:
+            provider.deprovision_user(self.user)
+
+        self.assertEqual(str(caught.exception), "fast_id_link_mismatch")
+        self.assertEqual(client.deleted_user_ids, [])
+
     def test_registration_matches_normalized_email_and_preserves_password(self):
         provider, client = self.provider(
             users=[
@@ -218,11 +375,11 @@ class FastIdPasskeyProviderTests(TestCase):
         self.assertIsNotNone(link.registered_at)
         self.assertIsNotNone(self.enrolment.consumed_at)
         self.assertTrue(self.user.has_usable_password())
+        self.assertEqual(client.created_users, [])
         self.assertNotIn("token", client.registration_payload)
 
-    def test_registration_rejects_missing_or_ambiguous_email_match(self):
+    def test_registration_rejects_ambiguous_or_invalid_email_match(self):
         cases = (
-            ([], "fast_id_user_not_found"),
             (
                 [
                     {"id": "external-1", "email": "person@example.com"},
@@ -272,7 +429,7 @@ class FastIdPasskeyProviderTests(TestCase):
             tenant_key="tenant-key",
             external_user_id="stale-external-id",
         )
-        provider, _client = self.provider(
+        provider, client = self.provider(
             users=[
                 {
                     "id": "external-1",
@@ -286,6 +443,29 @@ class FastIdPasskeyProviderTests(TestCase):
             provider.start_registration(self.user)
 
         self.assertEqual(str(caught.exception), "fast_id_link_mismatch")
+        self.assertEqual(client.created_users, [])
+
+    def test_provisioning_does_not_create_duplicate_for_stale_link(self):
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-key",
+            external_user_id="stale-external-id",
+        )
+        provider, client = self.provider(
+            users=[
+                {
+                    "id": "external-2",
+                    "email": "other@example.com",
+                    "enabled": True,
+                }
+            ]
+        )
+
+        with self.assertRaises(PasskeyCeremonyError) as caught:
+            provider.provision_user(self.user)
+
+        self.assertEqual(str(caught.exception), "fast_id_link_mismatch")
+        self.assertEqual(client.created_users, [])
 
     def test_finish_registration_rejects_provider_mismatch(self):
         provider, _client = self.provider()

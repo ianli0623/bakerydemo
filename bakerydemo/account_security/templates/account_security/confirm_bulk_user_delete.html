@@ -1,0 +1,9 @@
+{% extends "wagtailusers/bulk_actions/confirm_bulk_delete.html" %}
+{% load i18n %}
+
+{% block items_with_access %}
+    {% if fast_id_bulk_delete_blocked %}
+        <p>{% trans "Fast-ID-linked users cannot be bulk deleted. Delete them one at a time." %}</p>
+    {% endif %}
+    {{ block.super }}
+{% endblock items_with_access %}

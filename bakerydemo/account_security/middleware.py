@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from wagtail.admin import messages
 
+from .models import FastIdUserLink
 from .services import (
     get_password_expiry_status,
     get_security_state,
@@ -25,9 +26,21 @@ PASSWORD_EXPIRY_NOTICE_SESSION_KEY = "account_security_password_expiry_notice"
 
 
 def is_passkey_only_user(user):
+    if user.has_usable_password():
+        return False
+    if user.passkey_credentials.filter(revoked_at__isnull=True).exists():
+        return True
+    if not getattr(settings, "FAST_ID_ENABLED", False):
+        return False
+
+    tenant_key = getattr(settings, "FAST_ID_TENANT_KEY", "")
     return (
-        not user.has_usable_password()
-        and user.passkey_credentials.filter(revoked_at__isnull=True).exists()
+        bool(tenant_key)
+        and FastIdUserLink.objects.filter(
+            user=user,
+            tenant_key=tenant_key,
+            registered_at__isnull=False,
+        ).exists()
     )
 
 

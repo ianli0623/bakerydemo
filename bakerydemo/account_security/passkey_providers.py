@@ -1,15 +1,16 @@
 import copy
 import json
+import logging
 from binascii import Error as BinasciiError
 from dataclasses import dataclass
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.utils import timezone
 from webauthn.helpers import base64url_to_bytes
 
 from .authentication import normalize_account_email
-from .fast_id import FastIdClient
+from .fast_id import FastIdClient, FastIdError
 from .models import FastIdUserLink, PasskeyCredential, PasskeyEnrolment
 from .passkeys import (
     PasskeyCeremonyError,
@@ -18,6 +19,8 @@ from .passkeys import (
     complete_registration,
     verify_login_credential,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -123,7 +126,19 @@ class FastIdPasskeyProvider:
     def __init__(self, *, client=None):
         self.client = client or FastIdClient.from_settings()
 
-    def _resolve_registration_link(self, user):
+    def _cleanup_remote_user(self, external_user_id):
+        try:
+            self.client.delete_user(external_user_id)
+        except FastIdError:
+            logger.error("Fast-ID cleanup failed after local provisioning error")
+
+    def _resolve_registration_link(
+        self,
+        user,
+        *,
+        allow_create=False,
+        require_new_remote=False,
+    ):
         try:
             link = user.fast_id_link
         except FastIdUserLink.DoesNotExist:
@@ -145,8 +160,17 @@ class FastIdPasskeyProvider:
                 and normalize_account_email(candidate_email) == email
             ):
                 matches.append(candidate)
+        if require_new_remote and link is None and matches:
+            raise PasskeyCeremonyError("fast_id_user_exists")
+        created_remotely = False
         if not matches:
-            raise PasskeyCeremonyError("fast_id_user_not_found")
+            if link is not None:
+                raise PasskeyCeremonyError("fast_id_link_mismatch")
+            if not allow_create:
+                raise PasskeyCeremonyError("fast_id_user_not_found")
+            display_name = user.get_full_name().strip() or user.get_username() or email
+            matches.append(self.client.create_user(email, display_name))
+            created_remotely = True
         if len(matches) != 1:
             raise PasskeyCeremonyError("fast_id_user_ambiguous")
 
@@ -154,6 +178,13 @@ class FastIdPasskeyProvider:
         external_user_id = match.get("id")
         if not isinstance(external_user_id, str) or not external_user_id.strip():
             raise PasskeyCeremonyError("fast_id_user_invalid")
+        external_user_id = external_user_id.strip()
+        match_email = match.get("email")
+        if (
+            not isinstance(match_email, str)
+            or normalize_account_email(match_email) != email
+        ):
+            raise PasskeyCeremonyError("fast_id_user_mismatch")
         if match.get("enabled") is False:
             raise PasskeyCeremonyError("fast_id_user_inactive")
         if link is not None:
@@ -161,13 +192,37 @@ class FastIdPasskeyProvider:
                 raise PasskeyCeremonyError("fast_id_link_mismatch")
             return link
         try:
-            return FastIdUserLink.objects.create(
-                user=user,
-                tenant_key=settings.FAST_ID_TENANT_KEY,
-                external_user_id=external_user_id,
+            with transaction.atomic():
+                return FastIdUserLink.objects.create(
+                    user=user,
+                    tenant_key=settings.FAST_ID_TENANT_KEY,
+                    external_user_id=external_user_id,
+                )
+        except DatabaseError as exc:
+            if created_remotely:
+                self._cleanup_remote_user(external_user_id)
+            reason = (
+                "fast_id_link_conflict"
+                if isinstance(exc, IntegrityError)
+                else "fast_id_link_persistence_failed"
             )
-        except IntegrityError:
-            raise PasskeyCeremonyError("fast_id_link_conflict") from None
+            raise PasskeyCeremonyError(reason) from None
+
+    def provision_user(self, user):
+        return self._resolve_registration_link(
+            user,
+            allow_create=True,
+            require_new_remote=True,
+        )
+
+    def deprovision_user(self, user):
+        try:
+            link = user.fast_id_link
+        except FastIdUserLink.DoesNotExist:
+            return
+        if link.tenant_key != settings.FAST_ID_TENANT_KEY:
+            raise PasskeyCeremonyError("fast_id_link_mismatch")
+        self.client.delete_user(link.external_user_id)
 
     def start_registration(self, user):
         link = self._resolve_registration_link(user)

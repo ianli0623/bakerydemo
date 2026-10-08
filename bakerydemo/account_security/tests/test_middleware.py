@@ -2,12 +2,12 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from webauthn.helpers import bytes_to_base64url
 
-from bakerydemo.account_security.models import PasskeyCredential
+from bakerydemo.account_security.models import FastIdUserLink, PasskeyCredential
 from bakerydemo.account_security.services import sync_password_change
 
 
@@ -73,6 +73,104 @@ class PasswordPolicyMiddlewareTests(TestCase):
         response = self.client.get(reverse("wagtailadmin_home"))
 
         self.assertEqual(response.status_code, 200)
+
+    @override_settings(FAST_ID_ENABLED=True, FAST_ID_TENANT_KEY="tenant-key")
+    def test_passwordless_user_with_registered_fast_id_bypasses_password_expiry(
+        self,
+    ):
+        self.user.set_unusable_password()
+        self.user.save(update_fields=["password"])
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-key",
+            external_user_id="external-user-id",
+            registered_at=timezone.now(),
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(FAST_ID_ENABLED=True, FAST_ID_TENANT_KEY="tenant-key")
+    def test_passwordless_user_with_unregistered_fast_id_fails_closed(self):
+        self.user.set_unusable_password()
+        self.user.save(update_fields=["password"])
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-key",
+            external_user_id="external-user-id",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertRedirects(
+            response,
+            self.change_url,
+            fetch_redirect_response=False,
+        )
+
+    @override_settings(FAST_ID_ENABLED=True, FAST_ID_TENANT_KEY="tenant-key")
+    def test_passwordless_user_with_other_tenant_fast_id_fails_closed(self):
+        self.user.set_unusable_password()
+        self.user.save(update_fields=["password"])
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="other-tenant",
+            external_user_id="external-user-id",
+            registered_at=timezone.now(),
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertRedirects(
+            response,
+            self.change_url,
+            fetch_redirect_response=False,
+        )
+
+    @override_settings(FAST_ID_ENABLED=False, FAST_ID_TENANT_KEY="tenant-key")
+    def test_passwordless_user_with_disabled_fast_id_fails_closed(self):
+        self.user.set_unusable_password()
+        self.user.save(update_fields=["password"])
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-key",
+            external_user_id="external-user-id",
+            registered_at=timezone.now(),
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertRedirects(
+            response,
+            self.change_url,
+            fetch_redirect_response=False,
+        )
+
+    @override_settings(FAST_ID_ENABLED=True, FAST_ID_TENANT_KEY="tenant-key")
+    def test_expired_password_is_not_bypassed_by_registered_fast_id(self):
+        state = self.user.account_security_state
+        state.must_change_password = False
+        state.password_changed_at = timezone.now() - timedelta(days=90)
+        state.save()
+        FastIdUserLink.objects.create(
+            user=self.user,
+            tenant_key="tenant-key",
+            external_user_id="external-user-id",
+            registered_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("wagtailadmin_home"))
+
+        self.assertRedirects(
+            response,
+            self.change_url,
+            fetch_redirect_response=False,
+        )
 
     def test_passwordless_user_without_active_passkey_fails_closed(self):
         self.user.set_unusable_password()

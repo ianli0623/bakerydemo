@@ -301,12 +301,8 @@ class FastIdPasskeyViewTests(TestCase):
                 self.assertNotIn("management-token", response_text)
                 self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_missing_and_ambiguous_remote_registration_users_are_generic(self):
+    def test_ambiguous_remote_registration_users_are_generic(self):
         cases = (
-            (
-                [{"id": "external-2", "email": "other@example.com"}],
-                "fast_id_user_not_found",
-            ),
             (
                 [
                     {"id": "external-1", "email": "person@example.com"},

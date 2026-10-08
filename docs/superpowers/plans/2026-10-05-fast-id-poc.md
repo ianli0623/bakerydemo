@@ -1,18 +1,26 @@
 # Fast-ID Passkey PoC Implementation Plan
 
+> **2026-10-08 lifecycle amendment:** Later approved requirements add automatic
+> Fast-ID Tenant User creation and deletion from Wagtail. They supersede the
+> original pre-created-user and no-auto-provisioning constraints below. The
+> final implementation must validate returned identities, block linked deletion
+> while Fast-ID is disabled, compensate a failed local link save, and retain an
+> inactive retry state if remote deletion succeeds but local deletion fails.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an opt-in Fast-ID passkey provider that supports registration and sign-in for existing tenant users while preserving the current local Windows Hello implementation and password recovery path.
+**Goal:** Add an opt-in Fast-ID passkey provider that manages Tenant User creation and deletion, supports passkey registration and sign-in, and preserves the current local Windows Hello implementation and password recovery path.
 
 **Architecture:** Keep the existing same-origin Django URLs, templates, and framework-free browser code. A provider adapter selects the existing local implementation or a new server-side Fast-ID client through `FAST_ID_ENABLED`; Django owns all remote tokens, local user mapping, session state, throttling, and audit behavior.
 
 **Tech Stack:** Python 3, Django 6, Wagtail 7.4, PostgreSQL-compatible Django models, `httpx` 0.28, WebAuthn browser APIs, Django test framework, `prek`.
 
-**Vendor-contract amendment:** The later-supplied API flow and vendor backend
-manual document HTTP Basic Client ID/Secret token operations and
-`POST /api/webauthn/token/verify`. Tasks 1, 3, 4, 5, and 6 below use that
-verified-subject contract instead of the earlier provisional unverified-token
-design.
+**Vendor-contract amendment:** The later-supplied API flow, vendor backend
+manual, and RBAC reference implementation use the management Bearer token to
+query tenant users and issue registration user tokens. HTTP Basic Client
+ID/Secret is used by `POST /api/webauthn/token/verify`. Tasks 1, 3, 4, 5, and 6
+below use that verified-subject contract instead of the earlier provisional
+unverified-token design.
 
 **Spec:** `docs/superpowers/specs/2026-10-05-fast-id-poc-design.md`
 
@@ -23,7 +31,7 @@ design.
 - Password login must remain available after Fast-ID registration.
 - Never expose the management token, user token, Client Secret, or raw remote response in HTML, JavaScript, URLs, exceptions, logs, fixtures, snapshots, or commits.
 - Never accept a token supplied by the browser as authenticated identity.
-- Do not create Fast-ID tenant users or migrate existing local passkey credentials in this PoC.
+- Automatically create and delete linked Fast-ID Tenant Users; do not migrate existing local passkey credentials in this PoC.
 - Automated tests must use an injected fake HTTP transport and must never call the live Fast-ID service.
 - Implement every behavior test-first and commit only after its focused tests pass.
 
@@ -59,7 +67,7 @@ design.
   .\.venv\Scripts\python.exe manage.py test bakerydemo.account_security.tests.test_settings bakerydemo.account_security.tests.test_security_checks
   ```
 
-- [ ] Define safe defaults in `base.py` and load environment overrides in `production.py`. Use the Client ID/Secret only for the documented server-to-server HTTP Basic token operations.
+- [ ] Define safe defaults in `base.py` and load environment overrides in `production.py`. Use the Client ID/Secret only for the documented server-to-server login-token verification operation.
 - [ ] Extend `account_security_configuration_check()` with stable Fast-ID error IDs beginning at `account_security.E007`; report setting names and safe remediation only, never setting values.
 - [ ] Re-run the focused tests and confirm they pass.
 - [ ] Commit the settings boundary:
@@ -162,7 +170,7 @@ class FastIdClient:
   ```
 
 - [ ] Implement a small `httpx.Client` wrapper that joins paths safely, encodes JSON, enforces the configured timeout, validates response shapes, and normalizes all remote failures into documented safe reason codes.
-- [ ] Normalize the management authorization value by stripping any existing case-insensitive `Bearer` prefix before adding exactly one prefix. Use HTTP Basic Client ID/Secret for user-token issuance and token verification; use user tokens only on registration calls that require them.
+- [ ] Normalize the management authorization value by stripping any existing case-insensitive `Bearer` prefix before adding exactly one prefix. Use the management Bearer token for tenant-user lookup and user-token issuance, HTTP Basic Client ID/Secret for login-token verification, and user tokens only on registration calls that require them.
 - [ ] Accept the authentication token only from the immediate server-to-server finalize response, send it to `/api/webauthn/token/verify`, and require verified, unexpired, non-revoked output with a non-empty `claims.sub`. Do not expose or return the raw identity token.
 - [ ] Re-run the client tests and confirm they pass.
 - [ ] Commit the HTTP boundary:
@@ -216,7 +224,7 @@ Each provider implements `start_registration(user)`, `finish_registration(user, 
   ```
 
 - [ ] Implement the local adapter as a thin delegation layer. Do not modify the existing local WebAuthn verification rules.
-- [ ] Implement the Fast-ID adapter with transaction-safe link resolution. Use normalized email for lookup, reject ambiguity, never create a remote tenant user, and never save user or management tokens.
+- [ ] Implement the Fast-ID adapter with transaction-safe provisioning. Require a new local account to have no matching remote user, create the Tenant User, validate its returned ID and normalized email, and never save user or management tokens.
 - [ ] Preserve the existing enrolment authorization and consumption semantics, except deliberately ignore `disable_password` for Fast-ID so the recovery password remains usable.
 - [ ] Tag every serialized provider state with `provider: "local"` or `provider: "fast_id"`; reject a state created by another provider.
 - [ ] Re-run the provider tests and the existing passkey service tests:
@@ -286,7 +294,7 @@ Each provider implements `start_registration(user)`, `finish_registration(user, 
 - Modify: `.gitignore` only if needed to keep `.env` ignored and `.env.example` tracked
 
 - [ ] Add a Fast-ID deployment section listing every environment variable with placeholders only. Document Client ID/Secret and management-token roles, and require all credentials to remain server-side.
-- [ ] Document the safe rollout sequence: rotate the previously exposed management token, configure HTTPS domain/RP/CORS, run checks and migrations, keep `FAST_ID_ENABLED=false`, deploy, enable on the test domain, then smoke-test only the two pre-created tenant users.
+- [ ] Document the safe rollout sequence: rotate the previously exposed management token, configure HTTPS domain/RP/CORS, run checks and migrations, keep `FAST_ID_ENABLED=false`, deploy, enable on the test domain, then create dedicated Wagtail test users and smoke-test their remote lifecycle.
 - [ ] Document rollback as setting `FAST_ID_ENABLED=false` and restarting the application; clarify that local credentials and mapping rows remain intact.
 - [ ] Document that production smoke testing must confirm the deployed vendor endpoint version, response contract, and tenant isolation behavior.
 - [ ] Add `.env.example` placeholders only if the repository does not already have an equivalent tracked configuration example. Confirm it contains no actual tenant IDs, Client ID, token, Client Secret, email address, or domain supplied by the customer.
@@ -345,7 +353,7 @@ Each provider implements `start_registration(user)`, `finish_registration(user, 
   git log --oneline --decorate -10
   ```
 
-- [ ] Review the final diff against the design spec. Confirm there are no live Fast-ID calls in tests, no secret values, no React dependency, no new public route, no auto-provisioning, and no password disablement.
+- [ ] Review the final diff against the design spec. Confirm there are no live Fast-ID calls in tests, no secret values, no React dependency, no new public route, automatic provisioning fails closed, and there is no password disablement.
 - [ ] If verification required code corrections, commit only those scoped corrections with a descriptive message and repeat every failed check.
 
 ## Required Review Focus
@@ -364,7 +372,7 @@ Perform this separately on the approved HTTPS test domain; do not automate it an
 
 - [ ] Rotate the management token that was previously shared in conversation and update the server-side environment.
 - [ ] Confirm the Fast-ID tenant allows the exact test origin and RP ID.
-- [ ] Register a passkey for each pre-created tenant user using a valid one-time local enrolment code.
+- [ ] Create dedicated test users in Wagtail, confirm their Tenant Users are created automatically, and register a passkey for each with its one-time local enrolment code.
 - [ ] Sign out and sign in with the registered passkey for each user.
 - [ ] Confirm password sign-in still works for both users.
 - [ ] Confirm audit entries contain safe reason codes and no token, Client Secret, assertion, or raw Fast-ID response.
