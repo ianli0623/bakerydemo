@@ -41,5 +41,5 @@ class Command(BaseCommand):
         # 5. Re-import data
         call_command("load_initial_data")
 
-        # 6. Change the admin password (in case it's different in this environment)
+        # 6. Prompt for a new temporary admin password without persisting it.
         call_command("reset_admin_password")

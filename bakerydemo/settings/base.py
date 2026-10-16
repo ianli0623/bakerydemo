@@ -336,8 +336,6 @@ WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
 
 WAGTAILIMAGES_AVIF_QUALITY = 60
 
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme")
-
 # Content Security policy settings
 # http://django-csp.readthedocs.io/en/latest/configuration.html
 

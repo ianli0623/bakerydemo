@@ -2,9 +2,7 @@ import re
 from urllib.parse import urlparse
 
 from django.conf import settings
-from django.contrib.auth.password_validation import validate_password
 from django.core.checks import Error, Tags, register
-from django.core.exceptions import ValidationError
 
 
 def _valid_rp_id(value):
@@ -108,17 +106,6 @@ def check_account_security_settings(app_configs, **kwargs):
         False,
     ):
         return errors
-
-    admin_password = getattr(settings, "ADMIN_PASSWORD", "")
-    try:
-        validate_password(admin_password)
-    except ValidationError:
-        errors.append(
-            Error(
-                "ADMIN_PASSWORD is missing or does not satisfy password policy.",
-                id="account_security.E001",
-            )
-        )
 
     secure_transport = (
         settings.SECURE_SSL_REDIRECT

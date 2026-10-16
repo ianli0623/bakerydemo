@@ -6,7 +6,6 @@ from bakerydemo.account_security.checks import check_account_security_settings
 class AccountSecurityChecksTests(SimpleTestCase):
     secure_settings = {
         "ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS": True,
-        "ADMIN_PASSWORD": "Valid-Deployment-Password-1!",
         "WAGTAILADMIN_BASE_URL": "https://cms.example.com",
         "SECURE_SSL_REDIRECT": True,
         "SESSION_COOKIE_SECURE": True,
@@ -33,7 +32,6 @@ class AccountSecurityChecksTests(SimpleTestCase):
         self.assertEqual(
             {error.id for error in errors},
             {
-                "account_security.E001",
                 "account_security.E002",
                 "account_security.E003",
             },
@@ -41,7 +39,6 @@ class AccountSecurityChecksTests(SimpleTestCase):
 
     @override_settings(
         ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS=True,
-        ADMIN_PASSWORD="Valid-Deployment-Password-1!",
         WAGTAILADMIN_BASE_URL="https://cms.example.com",
         SECURE_SSL_REDIRECT=True,
         SESSION_COOKIE_SECURE=True,
@@ -59,7 +56,6 @@ class AccountSecurityChecksTests(SimpleTestCase):
 
     @override_settings(
         ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS=True,
-        ADMIN_PASSWORD="Valid-Deployment-Password-1!",
         WAGTAILADMIN_BASE_URL="https://cms.example.com",
         SECURE_SSL_REDIRECT=True,
         SESSION_COOKIE_SECURE=True,
@@ -78,7 +74,6 @@ class AccountSecurityChecksTests(SimpleTestCase):
 
     @override_settings(
         ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS=True,
-        ADMIN_PASSWORD="Valid-Deployment-Password-1!",
         WAGTAILADMIN_BASE_URL="https://cms.example.com",
         SECURE_SSL_REDIRECT=True,
         SESSION_COOKIE_SECURE=True,
@@ -97,7 +92,6 @@ class AccountSecurityChecksTests(SimpleTestCase):
 
     @override_settings(
         ACCOUNT_SECURITY_ENFORCE_PRODUCTION_CHECKS=True,
-        ADMIN_PASSWORD="Valid-Deployment-Password-1!",
         WAGTAILADMIN_BASE_URL="https://cms.example.com",
         SECURE_SSL_REDIRECT=True,
         SESSION_COOKIE_SECURE=True,

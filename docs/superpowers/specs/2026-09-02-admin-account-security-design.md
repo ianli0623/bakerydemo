@@ -30,7 +30,7 @@
 - `AUTH_PASSWORD_VALIDATORS` 已啟用相似度、最小長度、常見密碼及純數字驗證，但尚未強制大小寫、數字與特殊符號的組合。
 - 正式環境已預設啟用 `SECURE_SSL_REDIRECT`、代理 HTTPS 標頭及 HSTS；仍需明確啟用安全的 session 與 CSRF Cookie。
 - 測試與 localhost 開發環境刻意停用 HTTPS 重新導向。
-- `reset_admin_password` 目前會直接使用 `ADMIN_PASSWORD`，而基本設定的開發預設值為 `changeme`。
+- `reset_admin_password` 只在執行當下以隱藏提示讀取新密碼，不將密碼保存在設定或環境變數。
 - 專案目前沒有登入失敗鎖定、密碼效期、強制首次變更或密碼歷程資料。
 
 ## 選定方案
@@ -176,10 +176,10 @@ localhost 開發與自動測試環境保留 HTTP，不設定 Secure Cookie，避
 
 HTTPS 保護密碼傳輸；Django password hasher 保護資料庫內的密碼。兩者用途不同，缺一不可。
 
-## 初始管理員密碼
+## 管理員密碼重設
 
-- `changeme` 只可作為 localhost 開發資料的預設值。
-- 正式環境 system check 發現 `ADMIN_PASSWORD` 缺少、為 `changeme` 或不符合密碼政策時回報阻擋部署的錯誤。
+- 管理員密碼不得保存在 Django 設定或環境變數。
+- `reset_admin_password` 執行時以隱藏提示要求輸入與確認新密碼。
 - `reset_admin_password` 在設定前執行完整驗證，成功後標示 `must_change_password=True`。
 - 指令與日誌不得輸出密碼內容。
 
@@ -236,7 +236,7 @@ HTTPS 保護密碼傳輸；Django password hasher 保護資料庫內的密碼。
 ### HTTPS 與設定
 
 - production settings 強制 SSL redirect、安全 session Cookie、安全 CSRF Cookie 與 HSTS。
-- production system check 拒絕缺少、不安全或不符合政策的 `ADMIN_PASSWORD`。
+- production system check 檢查 HTTPS、WebAuthn 與 Fast-ID 設定，不要求持久化管理員密碼。
 - dev 與 test settings 不強制 HTTPS，localhost 登入測試仍可執行。
 
 ### 手動驗收
@@ -252,7 +252,7 @@ HTTPS 保護密碼傳輸；Django password hasher 保護資料庫內的密碼。
 ## 上線與回復
 
 1. 備份資料庫並確認可還原。
-2. 設定符合政策的 production `ADMIN_PASSWORD` 與 HTTPS 代理環境。
+2. 設定 HTTPS 代理環境；若需重設 demo 管理員密碼，於部署後互動執行 `reset_admin_password`。
 3. 安裝新依賴並執行 Django system checks。
 4. 執行 schema 與 data migrations，建立安全狀態及初始密碼歷程。
 5. 執行自動測試，再依手動驗收流程檢查兩個後台入口。

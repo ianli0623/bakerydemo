@@ -264,7 +264,7 @@ exit
 sudo install -d -m 750 -o root -g deploy /etc/semi-e187
 ```
 
-建議產生三組不同的值：
+建議產生兩組不同的值：
 
 ```bash
 # Django SECRET_KEY
@@ -272,13 +272,9 @@ openssl rand -hex 64
 
 # PostgreSQL 密碼
 openssl rand -hex 32
-
-# ADMIN_PASSWORD：將 Aa1! 與隨機值接在一起
-printf 'Aa1!'
-openssl rand -hex 24
 ```
 
-三組值不得相同，也不得提交至 GitHub。
+兩組值不得相同，也不得提交至 GitHub。
 
 ### 12.2 後端設定
 
@@ -297,7 +293,6 @@ DATABASE_URL=postgresql://semi_app:PASTE_DB_PASSWORD@127.0.0.1:5432/semi_e187
 REDIS_URL=redis://127.0.0.1:6379
 WEBAUTHN_RP_ID=semi.example.com
 WEBAUTHN_ORIGIN=https://semi.example.com
-ADMIN_PASSWORD=Aa1!PASTE_RANDOM_VALUE
 DJANGO_LOG_LEVEL=INFO
 SECURE_HSTS_SECONDS=2592000
 
@@ -322,8 +317,7 @@ FAST_ID_TIMEOUT_SECONDS=5
 - `WEBAUTHN_ORIGIN` 的主機必須等於 RP ID，或是 RP ID 的子網域。
 - 使用者開始註冊後，不要任意變更 RP ID。
 - 多個 `DJANGO_ALLOWED_HOSTS` 使用逗號分隔，中間不要加入空白。
-- `ADMIN_PASSWORD` 是正式環境安全檢查所需的獨立密碼，至少 12 字元並符合密碼政策。
-- 即使移轉既有管理者帳號，仍需設定符合規則的 `ADMIN_PASSWORD`。
+- 管理者密碼不保存在環境設定檔。需要手動重設 demo 管理者時，執行 `python manage.py reset_admin_password`，並依隱藏提示輸入兩次新密碼。
 - `FAST_ID_ENABLED=false` 時完全沿用本機 Windows Hello；其他 Fast-ID 值可先填妥但不會被使用。
 - `FAST_ID_BASE_URL` 必須是 Fast-ID API 的 HTTPS Origin，不可包含路徑。
 - `FAST_ID_RP_ID` 與 `FAST_ID_ORIGIN` 必須對應實際測試或正式網站；Fast-ID 管理平台也必須允許該 Origin。
@@ -428,7 +422,6 @@ sudo -u postgres psql -d semi_e187 -c "\dt account_security_passkey*"
 
 `check --deploy` 不得出現：
 
-- `account_security.E001`：`ADMIN_PASSWORD` 未設定或不符合密碼政策。
 - `account_security.E002`：HTTPS、HSTS 或 Secure Cookie 未完整啟用。
 - `account_security.E003`：Wagtail 後台網址不是 HTTPS。
 - `account_security.E004`：WebAuthn RP ID 或 Origin 未設定。
@@ -1039,7 +1032,6 @@ Windows Hello 已註冊憑證依賴資料庫中的公開金鑰紀錄。若回復
 | `account_security.E006` | 檢查 Origin | 使用與正式後台一致的 HTTPS Origin |
 | 502 Bad Gateway | 查看 systemd 狀態 | 確認 3100 或 8000 實際監聽 |
 | 靜態檔案缺少 | 檢查 `collect_static` | 重新執行 `collectstatic` 並檢查 Nginx alias |
-| 部署檢查 E001 | 檢查 `ADMIN_PASSWORD` | 設定符合密碼政策的獨立密碼 |
 | 部署檢查 E003 | 檢查 `PRIMARY_HOST` | 設定正式網域且不要加入 `https://` |
 
 常用診斷指令：
@@ -1070,14 +1062,14 @@ sudo journalctl -u redis-server -n 100 --no-pager
 - [ ] Redis 只監聽本機且未對外開放。
 - [ ] `backend.env` 與 `frontend.env` 權限為 `640`。
 - [ ] 環境設定檔未加入 Git。
-- [ ] 資料庫密碼、Django SECRET_KEY 與 ADMIN_PASSWORD 使用不同值。
+- [ ] 資料庫密碼與 Django SECRET_KEY 使用不同值。
 - [ ] `WEBAUTHN_RP_ID` 為固定正式主機名稱。
 - [ ] `WEBAUTHN_ORIGIN` 與實際後台 HTTPS Origin 完全一致。
 - [ ] migration `0003` 至 `0007` 已套用。
 - [ ] 三張 Passkey 資料表存在。
 - [ ] Fast-ID 若啟用，`backend.env` 已完整設定，管理 Token 已輪替，且通過第 22.4 節測試。
 - [ ] `collectstatic` 與 `check --deploy` 已完成。
-- [ ] `check --deploy` 沒有 `E001` 至 `E006`。
+- [ ] `check --deploy` 沒有任何 `account_security` 錯誤。
 - [ ] `npm test`、`npm run typecheck` 與 `npm run build` 已完成。
 - [ ] systemd 前後台服務已設為開機自動啟動。
 - [ ] Nginx 已轉送 `/account/security/` 並禁止快取相關回應。
