@@ -37,3 +37,4 @@ __pycache__
 !.gitignore
 bakerydemo/collect_static
 rbac
+/etc/semi-e187/backend.env

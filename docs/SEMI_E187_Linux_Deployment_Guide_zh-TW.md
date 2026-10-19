@@ -150,11 +150,11 @@ sudo -u postgres psql
 進入 PostgreSQL 後執行：
 
 ```sql
-CREATE ROLE semi_app LOGIN;
-\password semi_app
+CREATE ROLE bakery_user LOGIN;
+\password bakery_user
 
-CREATE DATABASE semi_e187
-    OWNER semi_app
+CREATE DATABASE semie187
+    OWNER bakery_user
     ENCODING 'UTF8'
     TEMPLATE template0;
 
@@ -164,7 +164,7 @@ CREATE DATABASE semi_e187
 測試連線：
 
 ```bash
-psql -h 127.0.0.1 -U semi_app -d semi_e187 -W \
+psql -h 127.0.0.1 -U bakery_user -d semie187 -W \
   -c "SELECT current_database(), current_user, version();"
 ```
 
@@ -289,7 +289,7 @@ DJANGO_SETTINGS_MODULE=bakerydemo.settings.production
 DJANGO_SECRET_KEY=PASTE_RANDOM_SECRET_KEY
 DJANGO_ALLOWED_HOSTS=semi.example.com
 PRIMARY_HOST=semi.example.com
-DATABASE_URL=postgresql://semi_app:PASTE_DB_PASSWORD@127.0.0.1:5432/semi_e187
+DATABASE_URL=postgresql://bakery_user:PASTE_DB_PASSWORD@127.0.0.1:5432/semie187
 REDIS_URL=redis://127.0.0.1:6379
 WEBAUTHN_RP_ID=semi.example.com
 WEBAUTHN_ORIGIN=https://semi.example.com
@@ -407,7 +407,7 @@ exit
 確認 PostgreSQL 資料表：
 
 ```bash
-sudo -u postgres psql -d semi_e187 -c "\dt account_security_passkey*"
+sudo -u postgres psql -d semie187 -c "\dt account_security_passkey*"
 ```
 
 應包含：
@@ -706,7 +706,7 @@ scp D:\semi-e187-backup\semi-e187-media.tar.gz `
 
 ### 20.5 還原至 Linux PostgreSQL
 
-以下操作以空白 `semi_e187` 資料庫為前提。若目標資料庫已有正式資料，不可直接覆蓋，應另外建立空白資料庫測試還原。
+以下操作以空白 `semie187` 資料庫為前提。若目標資料庫已有正式資料，不可直接覆蓋，應另外建立空白資料庫測試還原。
 
 ```bash
 sudo systemctl stop semi-e187-frontend semi-e187-backend
@@ -714,8 +714,8 @@ sudo systemctl stop semi-e187-frontend semi-e187-backend
 sudo -u postgres pg_restore \
   --exit-on-error \
   --no-owner \
-  --role=semi_app \
-  --dbname=semi_e187 \
+  --role=bakery_user \
+  --dbname=semie187 \
   /tmp/semi-e187.dump
 ```
 
@@ -984,7 +984,7 @@ sudo install -d -m 700 -o postgres -g postgres \
   /var/backups/semi-e187
 
 sudo -u postgres pg_dump -Fc \
-  -d semi_e187 \
+  -d semie187 \
   -f /var/backups/semi-e187/semi-e187.dump
 ```
 
@@ -1057,7 +1057,7 @@ sudo journalctl -u redis-server -n 100 --no-pager
 - [ ] Windows Hello 程式已經合併至 `main` 或核准的 release tag。
 - [ ] 已記錄實際部署 commit。
 - [ ] DNS 已指向正確的 Linux 公開 IP。
-- [ ] PostgreSQL 使用專用 `semi_app` 角色。
+- [ ] PostgreSQL 使用專用 `bakery_user` 角色。
 - [ ] 應用程式沒有使用 `postgres` 超級使用者連線。
 - [ ] Redis 只監聽本機且未對外開放。
 - [ ] `backend.env` 與 `frontend.env` 權限為 `640`。

@@ -12,7 +12,7 @@ from bakerydemo.account_security.services import sync_password_change
 
 PASSKEY_CLEANUP_REMINDER = (
     "刪除帳號後，請至 Windows「設定 → 帳戶 → Passkeys」刪除 "
-    "lularm.com 金鑰，避免日後出現重複金鑰。"
+    "e187.tw 金鑰，避免日後出現重複金鑰。"
 )
 FAST_ID_REMOTE_DELETION_WARNING = (
     "刪除此帳號也會永久刪除 Fast-ID Tenant User 與伺服器端憑證。"

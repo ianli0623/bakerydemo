@@ -237,8 +237,8 @@ msgstr "無法建立 Fast-ID 帳號，請稍後再試。"
 msgid "The Fast-ID account could not be deleted. The local user was kept."
 msgstr "無法刪除 Fast-ID 帳號，本機使用者已保留。"
 
-msgid "After deleting the account, remove the lularm.com passkey in Windows Settings > Accounts > Passkeys to avoid duplicate passkeys later."
-msgstr "刪除帳號後，請至 Windows「設定 → 帳戶 → Passkeys」刪除 lularm.com 金鑰，避免日後出現重複金鑰。"
+msgid "After deleting the account, remove the e187.tw passkey in Windows Settings > Accounts > Passkeys to avoid duplicate passkeys later."
+msgstr "刪除帳號後，請至 Windows「設定 → 帳戶 → Passkeys」刪除 e187.tw 金鑰，避免日後出現重複金鑰。"
 
 msgid "Fast-ID-linked users cannot be bulk deleted. Delete them one at a time."
 msgstr "已連結 Fast-ID 的使用者無法批次刪除，請逐一刪除。"

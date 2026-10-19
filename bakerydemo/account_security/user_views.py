@@ -32,7 +32,7 @@ FAST_ID_DELETION_ERROR = _(
     "The Fast-ID account could not be deleted. The local user was kept."
 )
 PASSKEY_CLEANUP_REMINDER = _(
-    "After deleting the account, remove the lularm.com passkey in Windows "
+    "After deleting the account, remove the e187.tw passkey in Windows "
     "Settings > Accounts > Passkeys to avoid duplicate passkeys later."
 )
 FAST_ID_DISABLED_DELETION_ERROR = _(
