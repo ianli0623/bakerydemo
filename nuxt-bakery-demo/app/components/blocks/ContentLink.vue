@@ -33,9 +33,9 @@ const presentation = computed(() =>
   </a>
 
   <span v-else class="content-link content-link--disabled" aria-disabled="true">
-    <template v-if="presentation.statusOnly">
+    <small v-if="presentation.statusOnly">
       {{ t('status.unavailable') }}
-    </template>
+    </small>
     <template v-else>
       {{ presentation.label }}
       <small>{{ t('status.unavailable') }}</small>
