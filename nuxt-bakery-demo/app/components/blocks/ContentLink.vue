@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { BakeryContentLink } from '#shared/types/bakery'
-import { getLinkPresentation } from '~/utils/stream-field'
+import type { BakeryContentLink } from '#shared/types/bakery';
+import { getLinkPresentation } from '~/utils/stream-field';
 
 const props = defineProps<{
-  link: BakeryContentLink
-}>()
+  link: BakeryContentLink;
+}>();
 
-const { t } = useI18n()
-const localePath = useLocalePath()
+const { t } = useI18n();
+const localePath = useLocalePath();
 const presentation = computed(() =>
-  getLinkPresentation(props.link, path => localePath(path))
-)
+  getLinkPresentation(props.link, (path) => localePath(path)),
+);
 </script>
 
 <template>
@@ -33,7 +33,12 @@ const presentation = computed(() =>
   </a>
 
   <span v-else class="content-link content-link--disabled" aria-disabled="true">
-    {{ presentation.label }}
-    <small>{{ t('status.unavailable') }}</small>
+    <template v-if="presentation.statusOnly">
+      {{ t('status.unavailable') }}
+    </template>
+    <template v-else>
+      {{ presentation.label }}
+      <small>{{ t('status.unavailable') }}</small>
+    </template>
   </span>
 </template>

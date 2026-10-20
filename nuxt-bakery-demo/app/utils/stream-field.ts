@@ -52,7 +52,7 @@ export function getImagePresentation(
 export type LinkPresentation =
   | { kind: 'internal'; to: string; label: string }
   | { kind: 'external'; href: string; label: string; newTab: boolean }
-  | { kind: 'disabled'; label: string };
+  | { kind: 'disabled'; label: string; statusOnly?: boolean };
 
 function disabledLink(label: string): LinkPresentation {
   return { kind: 'disabled', label };
@@ -65,11 +65,9 @@ const complianceRegistryLabels = new Set([
   'Search the Online Compliance Register',
 ]);
 
-function appRouteForDisabledLink(label: string): string | null {
+function isComplianceRegistryLink(label: string): boolean {
   const normalizedLabel = label.trim().replace(/\s*→\s*$/u, '');
-  return complianceRegistryLabels.has(normalizedLabel)
-    ? '/compliance-registry/'
-    : null;
+  return complianceRegistryLabels.has(normalizedLabel);
 }
 
 function isSafeInternalHref(href: string): boolean {
@@ -104,15 +102,12 @@ export function getLinkPresentation(
   const resolvePath =
     typeof localizePath === 'function' ? localizePath : (path: string) => path;
 
-  if (link.kind === 'disabled') {
-    const appRoute = appRouteForDisabledLink(link.label);
-    if (appRoute) {
-      return {
-        kind: 'internal',
-        to: resolvePath(appRoute),
-        label: link.label,
-      };
-    }
+  if (link.kind === 'disabled' && isComplianceRegistryLink(link.label)) {
+    return {
+      kind: 'disabled',
+      label: link.label,
+      statusOnly: true,
+    };
   }
 
   if (link.kind === 'internal' && isSafeInternalHref(href)) {

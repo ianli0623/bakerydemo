@@ -175,26 +175,23 @@ test('getLinkPresentation makes unavailable and unsafe links non-interactive', (
   }
 });
 
-test('the compliance registry call to action opens the localized app page', () => {
+test('the compliance registry call to action is marked unavailable', () => {
   for (const label of [
     '線上合規名冊查詢',
     'Online Compliance Registry',
     'Search the Online Compliance Register →',
   ]) {
     assert.deepEqual(
-      getLinkPresentation(
-        {
-          label,
-          kind: 'disabled',
-          href: null,
-          new_tab: false,
-        },
-        (path) => `/zh-tw${path}`,
-      ),
-      {
-        kind: 'internal',
-        to: '/zh-tw/compliance-registry/',
+      getLinkPresentation({
         label,
+        kind: 'disabled',
+        href: null,
+        new_tab: false,
+      }),
+      {
+        kind: 'disabled',
+        label,
+        statusOnly: true,
       },
     );
   }
