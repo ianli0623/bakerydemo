@@ -6,11 +6,9 @@ import type {
   BakeryStandardPage,
   BakeryStreamBlock,
 } from '../shared/types/bakery.ts';
+import type { CertificateRegistryRecord } from '../shared/types/esign.ts';
 import * as sitePresentation from '../app/utils/site-presentation.ts';
-import {
-  complianceRegistryRecords,
-  filterComplianceRegistryRecords,
-} from '../app/utils/compliance-registry.ts';
+import { filterComplianceRegistryRecords } from '../app/utils/compliance-registry.ts';
 import {
   getContactLinks,
   getFooterLogoPresentation,
@@ -143,42 +141,71 @@ test('contact links use the settings phone href and email address', () => {
   });
 });
 
-test('compliance registry exposes the 18 approved fixed sample records', () => {
-  assert.equal(complianceRegistryRecords.length, 18);
-  assert.deepEqual(complianceRegistryRecords[0], {
-    certificateNumber: '5555',
-    currentVersion: '-',
-    issuedOn: '2026/09/02',
-    expiresOn: '-',
-    certificateStatus: 'notEffective',
-    workflowStatus: 'processing',
-  });
-  assert.deepEqual(complianceRegistryRecords.at(-1), {
-    certificateNumber: '123456',
-    currentVersion: '-',
-    issuedOn: '2026/09/16',
-    expiresOn: '-',
-    certificateStatus: 'notEffective',
-    workflowStatus: 'pendingAssignment',
-  });
-});
+const liveCertificateRecords: CertificateRegistryRecord[] = [
+  {
+    certificateNumber: 'PENDING-001',
+    currentVersion: 'V1',
+    issuedOn: '-',
+    expiresOn: '2027-01-01',
+    certificateStatus: 'pending',
+    workflowStatus: 'none',
+  },
+  {
+    certificateNumber: 'VALID-001',
+    currentVersion: 'V2',
+    issuedOn: '-',
+    expiresOn: '2027-02-02',
+    certificateStatus: 'valid',
+    workflowStatus: 'none',
+  },
+  {
+    certificateNumber: 'SUSPENDED-001',
+    currentVersion: 'V3',
+    issuedOn: '-',
+    expiresOn: '2027-03-03',
+    certificateStatus: 'suspended',
+    workflowStatus: 'none',
+  },
+  {
+    certificateNumber: 'REVOKED-001',
+    currentVersion: 'V4',
+    issuedOn: '-',
+    expiresOn: '2027-04-04',
+    certificateStatus: 'revoked',
+    workflowStatus: 'none',
+  },
+];
 
-test('compliance registry filtering combines certificate text and statuses', () => {
+test('compliance registry filtering combines certificate text and live status', () => {
   assert.deepEqual(
-    filterComplianceRegistryRecords(complianceRegistryRecords, {
-      query: '  WWWW ',
-      certificateStatus: 'notEffective',
-      workflowStatus: 'failed',
+    filterComplianceRegistryRecords(liveCertificateRecords, {
+      query: '  valid-001 ',
+      certificateStatus: 'valid',
     }).map((record: { certificateNumber: string }) => record.certificateNumber),
-    ['wwwww'],
+    ['VALID-001'],
   );
   assert.deepEqual(
-    filterComplianceRegistryRecords(complianceRegistryRecords, {
+    filterComplianceRegistryRecords(liveCertificateRecords, {
       query: '',
-      certificateStatus: '',
-      workflowStatus: 'pendingAssignment',
+      certificateStatus: 'suspended',
     }).map((record: { certificateNumber: string }) => record.certificateNumber),
-    ['123456'],
+    ['SUSPENDED-001'],
+  );
+});
+
+test('compliance registry ignores obsolete workflow criteria', () => {
+  const filtersWithObsoleteWorkflow = {
+    query: '',
+    certificateStatus: '',
+    workflowStatus: 'failed',
+  };
+
+  assert.deepEqual(
+    filterComplianceRegistryRecords(
+      liveCertificateRecords,
+      filtersWithObsoleteWorkflow,
+    ).map((record: { certificateNumber: string }) => record.certificateNumber),
+    ['PENDING-001', 'VALID-001', 'SUSPENDED-001', 'REVOKED-001'],
   );
 });
 

@@ -78,15 +78,57 @@ npm run dev
 
 前台網址：`http://localhost:3100/`
 
+## 本機電子證書 Mock API
+
+無法連線客戶內網電子證書 API 時，可使用僅監聽
+`127.0.0.1:8011` 的本機 Mock。Mock 使用公開的假 Key，不會讀取或覆寫
+既有 `.env` 內的客戶 API Key。
+
+先確認 Wagtail 已在 port 8000 執行，再開啟一個 PowerShell 啟動 Mock：
+
+```powershell
+cd D:\Ian\github\bakerydemo\nuxt-bakery-demo
+npm run mock:esign
+```
+
+另開一個 PowerShell，以 `.env.mock` 啟動 Nuxt：
+
+```powershell
+cd D:\Ian\github\bakerydemo\nuxt-bakery-demo
+npm run dev:mock
+```
+
+開啟 `http://localhost:3100/zh-tw/compliance-registry/`，即可檢查四種證書狀態、
+查詢及詳細資料。也可以直接檢查 Mock 回應：
+
+```powershell
+Invoke-RestMethod `
+  -Uri 'http://127.0.0.1:8011/api/v1/external/certificates' `
+  -Headers @{ 'X-API-Key' = 'local-esign-test-key' }
+```
+
+如需測試其他情境，請先停止 Mock，設定情境後再啟動：
+
+```powershell
+$env:ESIGN_MOCK_SCENARIO = 'empty'     # 空資料
+$env:ESIGN_MOCK_SCENARIO = 'error'     # HTTP 500
+$env:ESIGN_MOCK_SCENARIO = 'malformed' # 格式錯誤
+$env:ESIGN_MOCK_SCENARIO = 'slow'      # 超過前台 10 秒逾時
+npm run mock:esign
+```
+
+測試完成後可執行 `Remove-Item Env:ESIGN_MOCK_SCENARIO`。這個 Mock 只能驗證本機
+串接邏輯，不能驗證客戶正式 API Key、內網路由、防火牆或正式資料。
+
 ## 前台路由與選單
 
-| 路由 | Wagtail 內容 |
-|---|---|
-| `/` | Home ID 60：SEMI E187 首頁 |
-| `/about/` | 認識標準 |
-| `/resources/` | 導入資源 |
-| `/certification/` | 驗證與合規 |
-| `/ecosystem/` | 案例與生態 |
+| 路由              | Wagtail 內容               |
+| ----------------- | -------------------------- |
+| `/`               | Home ID 60：SEMI E187 首頁 |
+| `/about/`         | 認識標準                   |
+| `/resources/`     | 導入資源                   |
+| `/certification/` | 驗證與合規                 |
+| `/ecosystem/`     | 案例與生態                 |
 
 主要選單由 Wagtail 的「SEMI E187 網站設定」內明確排序，不再依一般頁面的
 `Show in menus` 自動收錄。因此 `TEST`、`AXCC`、`CCC` 等既有頁面可維持原本
@@ -95,12 +137,12 @@ npm run dev
 
 ## Nuxt Server API
 
-| Nuxt API | Wagtail API | 用途 |
-|---|---|---|
-| `/api/bakery/home` | `/api/v2/pages/60/?fields=*` | 首頁與結構化內容 |
-| `/api/bakery/site-settings` | `/api/site-settings/` | 品牌、導覽、聯絡與頁尾資料 |
-| `/api/bakery/navigation` | `/api/site-settings/` | 相容用的排序導覽清單 |
-| `/api/bakery/pages/{slug}` | `/api/v2/pages/?type=base.StandardPage&slug={slug}` | 主題頁明細 |
+| Nuxt API                    | Wagtail API                                         | 用途                       |
+| --------------------------- | --------------------------------------------------- | -------------------------- |
+| `/api/bakery/home`          | `/api/v2/pages/60/?fields=*`                        | 首頁與結構化內容           |
+| `/api/bakery/site-settings` | `/api/site-settings/`                               | 品牌、導覽、聯絡與頁尾資料 |
+| `/api/bakery/navigation`    | `/api/site-settings/`                               | 相容用的排序導覽清單       |
+| `/api/bakery/pages/{slug}`  | `/api/v2/pages/?type=base.StandardPage&slug={slug}` | 主題頁明細                 |
 
 快速檢查：
 

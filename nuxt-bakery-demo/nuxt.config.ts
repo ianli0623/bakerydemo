@@ -16,6 +16,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     bakeryBaseUrl: '',
     staticExport: false,
+    esignApiBaseUrl: nodeProcess?.env?.ESIGN_API_BASE_URL ?? '',
+    esignApiKey: nodeProcess?.env?.ESIGN_API_KEY ?? '',
   },
   nitro: {
     prerender: staticPrerenderOptions,

@@ -67,6 +67,10 @@
     "results": "{count} records",
     "tableCaption": "SEMI E187 compliance certificate registry",
     "noResults": "No certificates match the selected criteria.",
+    "loading": "Loading certificate records…",
+    "loadError": "Unable to load certificate records",
+    "configurationError": "The electronic certificate API is not configured. Contact the system administrator.",
+    "serviceUnavailable": "The electronic certificate service is unavailable. Try again later.",
     "view": "View",
     "close": "Close",
     "detailEyebrow": "Certificate details",
@@ -80,7 +84,10 @@
       "actions": "Actions"
     },
     "certificateStatuses": {
-      "notEffective": "Not yet effective"
+      "pending": "Pending",
+      "valid": "Valid",
+      "suspended": "Suspended",
+      "revoked": "Revoked"
     },
     "workflowStatuses": {
       "processing": "Document processing",

@@ -67,6 +67,10 @@
     "results": "共 {count} 筆資料",
     "tableCaption": "SEMI E187 合規證書名冊",
     "noResults": "找不到符合條件的證書。",
+    "loading": "證書資料載入中…",
+    "loadError": "證書資料讀取失敗",
+    "configurationError": "電子證書 API 尚未完成設定，請聯絡系統管理員。",
+    "serviceUnavailable": "目前無法連線到電子證書服務，請稍後再試。",
     "view": "查看",
     "close": "關閉",
     "detailEyebrow": "證書資料",
@@ -80,7 +84,10 @@
       "actions": "操作"
     },
     "certificateStatuses": {
-      "notEffective": "尚未生效"
+      "pending": "待處理",
+      "valid": "有效",
+      "suspended": "暫停",
+      "revoked": "已作廢"
     },
     "workflowStatuses": {
       "processing": "文件處理中",

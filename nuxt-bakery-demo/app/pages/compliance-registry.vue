@@ -1,37 +1,47 @@
 <script setup lang="ts">
 import type {
-  ComplianceCertificateStatus,
-  ComplianceRegistryFilters,
-  ComplianceRegistryRecord,
-  ComplianceWorkflowStatus,
-} from '~/utils/compliance-registry';
-import {
-  complianceRegistryRecords,
-  filterComplianceRegistryRecords,
-} from '~/utils/compliance-registry';
+  CertificateListResponse,
+  CertificateRegistryRecord,
+  CertificateStatus,
+} from '#shared/types/esign';
+import type { ComplianceRegistryFilters } from '~/utils/compliance-registry';
+import { filterComplianceRegistryRecords } from '~/utils/compliance-registry';
 
 const { t } = useI18n();
 
 const queryInput = ref('');
-const certificateStatusInput = ref<ComplianceCertificateStatus | ''>('');
-const workflowStatusInput = ref<ComplianceWorkflowStatus | ''>('');
+const certificateStatusInput = ref<CertificateStatus | ''>('');
 const filters = ref<ComplianceRegistryFilters>({
   query: '',
   certificateStatus: '',
-  workflowStatus: '',
 });
-const selectedRecord = ref<ComplianceRegistryRecord | null>(null);
+const selectedRecord = ref<CertificateRegistryRecord | null>(null);
 const detailPanel = ref<HTMLElement | null>(null);
+const {
+  data: certificateResponse,
+  status: certificateLoadStatus,
+  error: certificateLoadError,
+  refresh: refreshCertificates,
+} = await useFetch<CertificateListResponse>('/api/esign/certificates');
+
+const certificateRecords = computed(
+  () => certificateResponse.value?.data ?? [],
+);
 
 const filteredRecords = computed(() =>
-  filterComplianceRegistryRecords(complianceRegistryRecords, filters.value),
+  filterComplianceRegistryRecords(certificateRecords.value, filters.value),
+);
+
+const loadErrorMessage = computed(() =>
+  certificateLoadError.value?.statusCode === 500
+    ? t('complianceRegistry.configurationError')
+    : t('complianceRegistry.serviceUnavailable'),
 );
 
 function applyFilters() {
   filters.value = {
     query: queryInput.value,
     certificateStatus: certificateStatusInput.value,
-    workflowStatus: workflowStatusInput.value,
   };
   selectedRecord.value = null;
 }
@@ -39,16 +49,19 @@ function applyFilters() {
 function resetFilters() {
   queryInput.value = '';
   certificateStatusInput.value = '';
-  workflowStatusInput.value = '';
   filters.value = {
     query: '',
     certificateStatus: '',
-    workflowStatus: '',
   };
   selectedRecord.value = null;
 }
 
-async function showDetails(record: ComplianceRegistryRecord) {
+async function retryLoad() {
+  selectedRecord.value = null;
+  await refreshCertificates();
+}
+
+async function showDetails(record: CertificateRegistryRecord) {
   selectedRecord.value = record;
   await nextTick();
   detailPanel.value?.focus();
@@ -91,8 +104,17 @@ useSeoMeta({
           v-model="certificateStatusInput"
         >
           <option value="">{{ t('complianceRegistry.allStatuses') }}</option>
-          <option value="notEffective">
-            {{ t('complianceRegistry.certificateStatuses.notEffective') }}
+          <option value="pending">
+            {{ t('complianceRegistry.certificateStatuses.pending') }}
+          </option>
+          <option value="valid">
+            {{ t('complianceRegistry.certificateStatuses.valid') }}
+          </option>
+          <option value="suspended">
+            {{ t('complianceRegistry.certificateStatuses.suspended') }}
+          </option>
+          <option value="revoked">
+            {{ t('complianceRegistry.certificateStatuses.revoked') }}
           </option>
         </select>
       </div>
@@ -101,20 +123,8 @@ useSeoMeta({
         <label for="registry-workflow-status">
           {{ t('complianceRegistry.workflowStatusLabel') }}
         </label>
-        <select id="registry-workflow-status" v-model="workflowStatusInput">
+        <select id="registry-workflow-status" disabled>
           <option value="">{{ t('complianceRegistry.allStatuses') }}</option>
-          <option value="processing">
-            {{ t('complianceRegistry.workflowStatuses.processing') }}
-          </option>
-          <option value="failed">
-            {{ t('complianceRegistry.workflowStatuses.failed') }}
-          </option>
-          <option value="none">
-            {{ t('complianceRegistry.workflowStatuses.none') }}
-          </option>
-          <option value="pendingAssignment">
-            {{ t('complianceRegistry.workflowStatuses.pendingAssignment') }}
-          </option>
         </select>
       </div>
 
@@ -132,7 +142,32 @@ useSeoMeta({
       </div>
     </form>
 
-    <p class="registry-result-count" role="status" aria-live="polite">
+    <div
+      v-if="certificateLoadStatus === 'pending'"
+      class="state-panel"
+      role="status"
+      aria-live="polite"
+    >
+      <div>
+        <strong>{{ t('complianceRegistry.loading') }}</strong>
+      </div>
+    </div>
+
+    <div
+      v-else-if="certificateLoadError"
+      class="state-panel state-error"
+      role="alert"
+    >
+      <div>
+        <strong>{{ t('complianceRegistry.loadError') }}</strong>
+        <p>{{ loadErrorMessage }}</p>
+      </div>
+      <button class="button button-secondary" type="button" @click="retryLoad">
+        {{ t('status.retry') }}
+      </button>
+    </div>
+
+    <p v-else class="registry-result-count" role="status" aria-live="polite">
       {{
         t('complianceRegistry.results', {
           count: filteredRecords.length,
@@ -140,7 +175,14 @@ useSeoMeta({
       }}
     </p>
 
-    <div v-if="filteredRecords.length" class="registry-table-wrap">
+    <div
+      v-if="
+        certificateLoadStatus !== 'pending' &&
+        !certificateLoadError &&
+        filteredRecords.length
+      "
+      class="registry-table-wrap"
+    >
       <table class="registry-table">
         <caption>
           {{
@@ -180,7 +222,10 @@ useSeoMeta({
               {{ record.expiresOn }}
             </td>
             <td :data-label="t('complianceRegistry.columns.certificateStatus')">
-              <span class="registry-status registry-status--certificate">
+              <span
+                class="registry-status registry-status--certificate"
+                :class="`registry-status--${record.certificateStatus}`"
+              >
                 {{
                   t(
                     `complianceRegistry.certificateStatuses.${record.certificateStatus}`,
@@ -218,12 +263,20 @@ useSeoMeta({
       </table>
     </div>
 
-    <p v-else class="registry-empty" role="status">
+    <p
+      v-else-if="certificateLoadStatus !== 'pending' && !certificateLoadError"
+      class="registry-empty"
+      role="status"
+    >
       {{ t('complianceRegistry.noResults') }}
     </p>
 
     <section
-      v-if="selectedRecord"
+      v-if="
+        selectedRecord &&
+        certificateLoadStatus !== 'pending' &&
+        !certificateLoadError
+      "
       id="registry-record-detail"
       ref="detailPanel"
       class="registry-detail"
