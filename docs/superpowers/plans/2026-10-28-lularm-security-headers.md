@@ -154,7 +154,7 @@ before reload.
 Run the focused unit test, `python manage.py check` with test settings, and the
 applicable formatting/lint checks. Record any unrelated existing limitation.
 
-- [ ] **Step 6: Commit and push only task files**
+- [x] **Step 6: Commit and push only task files**
 
 Stage the exact files listed above, confirm unrelated working-tree changes are
 unstaged, commit to `main`, and push `main` to `origin`.
