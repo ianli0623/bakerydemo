@@ -78,6 +78,7 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   git \
   nginx \
+  libnginx-mod-http-headers-more-filter \
   curl \
   ca-certificates \
   openssl \
@@ -401,6 +402,27 @@ sudo systemctl cat semi-e187-frontend
 
 ## 11. 設定 Nginx
 
+`lularm.com` 測試環境的完整設定已納入 Git：
+`deploy/nginx/semi-e187.conf`。在該測試機更新時，先備份現有設定，
+再安裝受版控檔案：
+
+```bash
+cd /srv/semi-e187/app
+timestamp="$(date +%Y%m%d-%H%M%S)"
+sudo cp -a \
+  /etc/nginx/sites-available/semi-e187 \
+  "/etc/nginx/sites-available/semi-e187.bak-${timestamp}"
+sudo install -o root -g root -m 0644 \
+  deploy/nginx/semi-e187.conf \
+  /etc/nginx/sites-available/semi-e187
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+下列設定則是全新 `e187.tw` 環境的基礎範例；網域及憑證仍須依客戶
+核准資料調整。安全標頭使用 `headers-more`，避免
+`/account/security/` 自訂 `Cache-Control` 時破壞 Nginx 原生
+`add_header` 的繼承。
+
 建立 `/etc/nginx/sites-available/semi-e187`：
 
 ```nginx
@@ -410,6 +432,12 @@ server {
 
     server_name e187.tw www.e187.tw;
     client_max_body_size 12m;
+
+    server_tokens off;
+    more_clear_headers 'Server';
+    more_clear_headers 'X-Powered-By';
+    more_set_headers "Content-Security-Policy: frame-ancestors 'self'; object-src 'none'; base-uri 'self';";
+    more_set_headers "X-Frame-Options: SAMEORIGIN";
 
     location /static/ {
         alias /srv/semi-e187/app/bakerydemo/collect_static/;
@@ -478,9 +506,9 @@ sudo ln -sfn \
   /etc/nginx/sites-available/semi-e187 \
   /etc/nginx/sites-enabled/semi-e187
 
-sudo nginx -t
-sudo systemctl enable --now nginx
-sudo systemctl reload nginx
+sudo nginx -t \
+  && sudo systemctl enable --now nginx \
+  && sudo systemctl reload nginx
 ```
 
 若客戶的閘道會在 VM 前方終止 HTTPS，必須確認閘道會傳遞原始 Host 與 HTTPS 協定資訊。未經客戶確認，不要自行在 VM 申請另一張憑證或變更閘道路由。
@@ -512,8 +540,7 @@ sudo certbot --nginx \
   -d www.e187.tw
 
 sudo certbot renew --dry-run
-sudo nginx -t
-sudo systemctl reload nginx
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 正式 WebAuthn／Fast-ID 註冊只能在最終 HTTPS 網域執行。變更 RP ID 或 Origin 可能使既有 Passkey 無法使用。
