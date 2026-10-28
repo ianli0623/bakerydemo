@@ -43,6 +43,28 @@ print(json.dumps({{
     "fast_id_origin": getattr(s, "FAST_ID_ORIGIN", ""),
     "fast_id_timeout": getattr(s, "FAST_ID_TIMEOUT_SECONDS", None),
     "google_map_api_key": getattr(s, "GOOGLE_MAP_API_KEY", ""),
+    "middleware": s.MIDDLEWARE,
+    "csp_report_only": getattr(s, "CSP_REPORT_ONLY", None),
+    "csp_default_src": getattr(s, "CSP_DEFAULT_SRC", None),
+    "csp_script_src": getattr(s, "CSP_SCRIPT_SRC", None),
+    "csp_script_src_attr": getattr(s, "CSP_SCRIPT_SRC_ATTR", None),
+    "csp_style_src": getattr(s, "CSP_STYLE_SRC", None),
+    "csp_style_src_attr": getattr(s, "CSP_STYLE_SRC_ATTR", None),
+    "csp_img_src": getattr(s, "CSP_IMG_SRC", None),
+    "csp_connect_src": getattr(s, "CSP_CONNECT_SRC", None),
+    "csp_font_src": getattr(s, "CSP_FONT_SRC", None),
+    "csp_frame_src": getattr(s, "CSP_FRAME_SRC", None),
+    "csp_media_src": getattr(s, "CSP_MEDIA_SRC", None),
+    "csp_manifest_src": getattr(s, "CSP_MANIFEST_SRC", None),
+    "csp_worker_src": getattr(s, "CSP_WORKER_SRC", None),
+    "csp_form_action": getattr(s, "CSP_FORM_ACTION", None),
+    "csp_object_src": getattr(s, "CSP_OBJECT_SRC", None),
+    "csp_base_uri": getattr(s, "CSP_BASE_URI", None),
+    "csp_frame_ancestors": getattr(s, "CSP_FRAME_ANCESTORS", None),
+    "csp_upgrade_insecure_requests": getattr(
+        s, "CSP_UPGRADE_INSECURE_REQUESTS", False
+    ),
+    "x_frame_options": getattr(s, "X_FRAME_OPTIONS", None),
 }}))
 '''
         environment = os.environ.copy()
@@ -63,6 +85,16 @@ print(json.dumps({{
             "FAST_ID_ORIGIN",
             "FAST_ID_TIMEOUT_SECONDS",
             "GOOGLE_MAP_API_KEY",
+            "CSP_DEFAULT_SRC",
+            "CSP_SCRIPT_SRC",
+            "CSP_STYLE_SRC",
+            "CSP_IMG_SRC",
+            "CSP_CONNECT_SRC",
+            "CSP_FONT_SRC",
+            "CSP_BASE_URI",
+            "CSP_OBJECT_SRC",
+            "CSP_FRAME_SRC",
+            "CSP_REPORT_URI",
         ):
             environment.pop(key, None)
         environment.update(extra_env or {})
@@ -94,6 +126,41 @@ print(json.dumps({{
             production["admin_url"],
             "https://cms.example.com",
         )
+
+    def test_production_enforces_complete_content_security_policy(self):
+        production = self._read_settings(
+            "bakerydemo.settings.production",
+            {"PRIMARY_HOST": "cms.example.com"},
+        )
+
+        middleware = production["middleware"]
+        self.assertLess(
+            middleware.index("csp.middleware.CSPMiddleware"),
+            middleware.index(
+                "django.middleware.clickjacking.XFrameOptionsMiddleware"
+            ),
+        )
+        self.assertFalse(production["csp_report_only"])
+        self.assertEqual(production["csp_default_src"], ["'self'"])
+        self.assertEqual(production["csp_script_src"], ["'self'"])
+        self.assertEqual(production["csp_script_src_attr"], ["'none'"])
+        self.assertEqual(production["csp_style_src"], ["'self'"])
+        self.assertEqual(production["csp_style_src_attr"], ["'none'"])
+        self.assertEqual(
+            production["csp_img_src"], ["'self'", "data:", "blob:"]
+        )
+        self.assertEqual(production["csp_connect_src"], ["'self'"])
+        self.assertEqual(production["csp_font_src"], ["'self'", "data:"])
+        self.assertEqual(production["csp_frame_src"], ["'self'"])
+        self.assertEqual(production["csp_media_src"], ["'self'"])
+        self.assertEqual(production["csp_manifest_src"], ["'self'"])
+        self.assertEqual(production["csp_worker_src"], ["'self'", "blob:"])
+        self.assertEqual(production["csp_form_action"], ["'self'"])
+        self.assertEqual(production["csp_object_src"], ["'none'"])
+        self.assertEqual(production["csp_base_uri"], ["'self'"])
+        self.assertEqual(production["csp_frame_ancestors"], ["'self'"])
+        self.assertTrue(production["csp_upgrade_insecure_requests"])
+        self.assertEqual(production["x_frame_options"], "SAMEORIGIN")
 
     def test_production_passkey_throttle_cache_fails_closed(self):
         production = self._read_settings(

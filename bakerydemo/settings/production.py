@@ -74,6 +74,37 @@ try:
 except ValueError:
     FAST_ID_TIMEOUT_SECONDS = 0.0
 
+# Emit application-owned response security headers. Keep CSP before the
+# clickjacking middleware so both headers are present on normal and error
+# responses, regardless of the reverse proxy configuration.
+_CSP_MIDDLEWARE = "csp.middleware.CSPMiddleware"
+if _CSP_MIDDLEWARE in MIDDLEWARE:
+    MIDDLEWARE.remove(_CSP_MIDDLEWARE)
+MIDDLEWARE.insert(
+    MIDDLEWARE.index("django.middleware.clickjacking.XFrameOptionsMiddleware"),
+    _CSP_MIDDLEWARE,
+)
+
+CSP_REPORT_ONLY = False
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'",)
+CSP_SCRIPT_SRC_ATTR = ("'none'",)
+CSP_STYLE_SRC = ("'self'",)
+CSP_STYLE_SRC_ATTR = ("'none'",)
+CSP_IMG_SRC = ("'self'", "data:", "blob:")
+CSP_CONNECT_SRC = ("'self'",)
+CSP_FONT_SRC = ("'self'", "data:")
+CSP_FRAME_SRC = ("'self'",)
+CSP_MEDIA_SRC = ("'self'",)
+CSP_MANIFEST_SRC = ("'self'",)
+CSP_WORKER_SRC = ("'self'", "blob:")
+CSP_FORM_ACTION = ("'self'",)
+CSP_OBJECT_SRC = ("'none'",)
+CSP_BASE_URI = ("'self'",)
+CSP_FRAME_ANCESTORS = ("'self'",)
+CSP_UPGRADE_INSECURE_REQUESTS = True
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 # AWS creds may be used for S3 and/or Elasticsearch
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
