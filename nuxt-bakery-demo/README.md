@@ -229,6 +229,22 @@ npm run typecheck
 npm run build
 ```
 
+開發資源安全檢查：先以 `npm run dev` 啟動本機前台，再於同一專案的另一個
+PowerShell 執行：
+
+```powershell
+npm run test:dev
+```
+
+此檢查會讀取 `http://localhost:3100` 的五種 Vite 資源路徑，確認各種 Origin
+請求均不回傳跨來源讀取授權，並包含 `X-Content-Type-Options: nosniff`。
+使用其他本機埠時，可先設定 `NUXT_DEV_TEST_ORIGIN`；僅接受 loopback 位址。
+它需要正在執行的開發服務，與一般單元測試、正式建置整合測試分開。
+
+以 ZAP 重驗時，先確認新設定已載入，再建立新的工作階段掃描。舊工作階段仍可能
+保留先前的警示。正式版本驗收應掃描 `npm run build` 產生的 Nitro 服務，
+而非以開發伺服器作為正式環境的等價測試。
+
 後端檢查：
 
 ```powershell

@@ -86,3 +86,24 @@ npm run typecheck
 - 備份實際啟用的 Nginx 設定，保留現行 IP 白名單與可信代理設定；不可直接用此分支的測試站 Nginx 範本覆蓋現場設定。
 - 在目標 Linux 執行 nginx -t，確認 headers-more module、網域、憑證及實際啟用檔案後才 reload。
 - 部署後驗證前後台操作與邊緣快取，再對應用程式範圍重新執行 ZAP。Cloudflare 控制的外部主機及 `/cdn-cgi/` 應與應用程式問題分別判讀。
+
+## 同日補充：本機開發資源 CORS
+
+依據 `2026-10-29-ZAP-Report-.html`（產生於 2026-10-29 11:36:50），本次新增處理的是本機開發服務，不涉及 VM 或線上設定。
+
+- 掃描對象：`http://localhost:3100`。
+- 中風險：跨網域設定錯誤，[ZAP 10098](https://www.zaproxy.org/docs/alerts/10098/)，共五筆 Nuxt/Vite 開發資源。
+- 證據：未帶 Origin 的請求會收到 `Access-Control-Allow-Origin: *`。實測外部 Origin 沒有授權標頭，因此未據此宣稱可任意跨站讀取資料。
+- 相同五筆資源另有低風險：缺少 X-Content-Type-Options。
+
+根因是 Nuxt 4.5.2 開發處理器經由 h3 CORS fallback，在沒有 Origin 時產生萬用字元。正式建置抽樣的 JS/CSS 已不回傳 CORS 授權、含 nosniff；正式建置的 Vite client 路徑為 404。
+
+修正方式：在 `vite.server` 明確設定 `cors: false`，讓 Nuxt 不再進入該 fallback；同來源資源不需要 CORS 授權。以 Vite 的 `headers` 補上 nosniff，不修改 node_modules、既有 API CORS、可信代理或 IP 白名單。
+
+新增 `npm run test:dev`：涵蓋報表中的五種路徑，各測無 Origin、同來源、外部來源、null 四種情境。修正前 20 個案例失敗，修正後 20 個案例通過（Node 含父測試共計 21 項），並要求所有資源仍為 HTTP 200，避免以 404 消除警示。
+
+瀏覽器檢查可正常渲染 CMS 首頁與導覽，字級放大及還原互動正常，console 顯示 `[vite] connected.`，沒有錯誤。另通過原有 93 項單元測試、正式建置、SSR CSP 整合測試及型別檢查。報表中的五個完整原始 URL（包含原查詢參數）也已逐筆重放，全數為 200、沒有 CORS 授權標頭且包含 nosniff。
+
+獨立唯讀審查未發現 Critical／Important／Minor 問題。審查者的 localhost probe 因 sandbox EACCES 未執行；上述 HTTP 與瀏覽器驗證由執行者完成。此次未驗證部署後行為，也未處理報表中的資訊性註解提示。
+
+目前是本機標頭與功能驗證結果，尚未產生新的 ZAP 報表。請在新工作階段重新掃描，避免將舊警示當作新回應的結果。

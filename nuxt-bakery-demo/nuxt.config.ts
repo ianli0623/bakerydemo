@@ -12,6 +12,14 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   modules: ['@nuxtjs/i18n', 'nuxt-security'],
   devServer: { port: 3100 },
+  vite: {
+    server: {
+      // Same-origin dev assets need no CORS. Explicitly disable Vite CORS so
+      // Nuxt also skips its dev-handler fallback that emits '*' without Origin.
+      cors: false,
+      headers: { 'X-Content-Type-Options': 'nosniff' },
+    },
+  },
   devtools: { enabled: false },
   runtimeConfig: {
     bakeryBaseUrl: '',
