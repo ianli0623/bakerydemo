@@ -2,6 +2,9 @@
 
 日期：2026-10-29（Asia/Taipei）
 
+本文件保留本機驗證時點的紀錄；後續已依使用者授權部署安全補丁至測試區，詳見
+[測試區部署紀錄](SEMI_E187_Lularm_Security_Deployment_2026-10-29_zh-TW.md)。正式站未變更。
+
 分支：`codex/lularm-strict-csp`
 
 實作目錄：`D:/Ian/github/bakerydemo/.worktrees/lularm-strict-csp`
