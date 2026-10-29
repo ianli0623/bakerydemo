@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from unittest import TestCase
 
@@ -9,20 +10,44 @@ class NginxDeploymentConfigTests(TestCase):
     def setUp(self):
         self.config = NGINX_SITE.read_text(encoding="utf-8")
 
-    def test_security_headers_do_not_depend_on_add_header_inheritance(self):
-        self.assertIn(
-            'more_set_headers "Content-Security-Policy: frame-ancestors '
-            "'self'; object-src 'none'; base-uri 'self';\";",
-            self.config,
-        )
-        self.assertIn(
-            'more_set_headers "X-Frame-Options: SAMEORIGIN";',
-            self.config,
-        )
-        self.assertNotIn("frame-ancestors 'none'", self.config)
-        self.assertNotIn("X-Frame-Options: DENY", self.config)
-        self.assertNotIn("add_header Content-Security-Policy", self.config)
-        self.assertNotIn("add_header X-Frame-Options", self.config)
+    def test_https_proxy_preserves_application_security_headers(self):
+        https_server = self.config.split("listen 443 ssl;", 1)[1]
+        server_directives = https_server.split("location ", 1)[0]
+        self.assertNotIn("Content-Security-Policy:", server_directives)
+        self.assertNotIn("X-Frame-Options:", server_directives)
+
+        locations = re.findall(r"location [^{]+\{([^{}]*)\}", https_server)
+        proxy_locations = [body for body in locations if "proxy_pass" in body]
+        self.assertGreaterEqual(len(proxy_locations), 5)
+        for body in proxy_locations:
+            with self.subTest(location=body.splitlines()[1].strip()):
+                self.assertNotRegex(
+                    body, r"(?:more_set_headers|add_header).*Content-Security-Policy"
+                )
+                self.assertNotRegex(
+                    body, r"(?:more_set_headers|add_header).*X-Frame-Options"
+                )
+                self.assertNotIn("proxy_hide_header Content-Security-Policy", body)
+
+    def test_direct_assets_have_complete_fallback_headers(self):
+        for route in ("/static/", "/media/"):
+            with self.subTest(route=route):
+                match = re.search(
+                    r"location " + re.escape(route) + r" \{([^{}]*)\}",
+                    self.config,
+                )
+                self.assertIsNotNone(match)
+                body = match[1]
+                for directive in (
+                    "default-src 'none'",
+                    "base-uri 'none'",
+                    "object-src 'none'",
+                    "form-action 'none'",
+                    "frame-ancestors 'self'",
+                    "X-Frame-Options: SAMEORIGIN",
+                    "X-Content-Type-Options: nosniff",
+                ):
+                    self.assertIn(directive, body)
 
     def test_versioned_site_preserves_the_live_routing_contract(self):
         expected_fragments = (
