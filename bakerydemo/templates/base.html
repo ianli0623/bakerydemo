@@ -1,4 +1,4 @@
-{% load navigation_tags static wagtailuserbar %}
+{% load navigation_tags static wagtailuserbar security_tags %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -23,7 +23,7 @@
             <base target="_blank">
         {% endif %}
 
-        <script>
+        <script nonce="{% csp_nonce %}">
             (() => {
                 let storedTheme = null;
                 try {

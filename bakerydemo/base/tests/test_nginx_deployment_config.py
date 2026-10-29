@@ -13,8 +13,11 @@ class NginxDeploymentConfigTests(TestCase):
     def test_https_proxy_preserves_application_security_headers(self):
         https_server = self.config.split("listen 443 ssl;", 1)[1]
         server_directives = https_server.split("location ", 1)[0]
-        self.assertNotIn("Content-Security-Policy:", server_directives)
-        self.assertNotIn("X-Frame-Options:", server_directives)
+        self.assertIn("Content-Security-Policy: $semi_e187_csp", server_directives)
+        self.assertIn("X-Frame-Options: $semi_e187_frame_options", server_directives)
+        self.assertNotIn("frame-ancestors 'self'", server_directives)
+        self.assertIn("default $upstream_http_content_security_policy;", self.config)
+        self.assertIn("default $upstream_http_x_frame_options;", self.config)
 
         locations = re.findall(r"location [^{]+\{([^{}]*)\}", https_server)
         proxy_locations = [body for body in locations if "proxy_pass" in body]

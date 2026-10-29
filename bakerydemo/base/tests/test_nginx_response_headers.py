@@ -26,6 +26,9 @@ SITE_FILE = Path(__file__).resolve().parents[3] / "deploy/nginx/semi-e187.conf"
 
 class ApplicationHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == "/upstream-error":
+            self.connection.shutdown(socket.SHUT_RDWR)
+            return
         nonce = secrets.token_urlsafe(24)
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
@@ -142,7 +145,9 @@ class NginxResponseHeadersTests(TestCase):
                     return
             except OSError:
                 if cls.process.poll() is not None:
-                    raise RuntimeError((cls.root / "logs/error.log").read_text()) from None
+                    raise RuntimeError(
+                        (cls.root / "logs/error.log").read_text()
+                    ) from None
                 time.sleep(0.05)
         raise TimeoutError("Local Nginx did not start")
 
@@ -156,7 +161,7 @@ class NginxResponseHeadersTests(TestCase):
                 cls.process.kill()
                 cls.process.wait(timeout=5)
 
-    def request(self, path, secure=True):
+    def request(self, path, secure=True, method="GET", extra_headers=None):
         connection = (
             http.client.HTTPSConnection(
                 "127.0.0.1", self.https_port, context=self.tls, timeout=5
@@ -165,7 +170,9 @@ class NginxResponseHeadersTests(TestCase):
             else http.client.HTTPConnection("127.0.0.1", self.http_port, timeout=5)
         )
         try:
-            connection.request("GET", path, headers={"Host": "lularm.com"})
+            connection.request(
+                method, path, headers={"Host": "lularm.com", **(extra_headers or {})}
+            )
             response = connection.getresponse()
             return (
                 response.status,
@@ -208,3 +215,18 @@ class NginxResponseHeadersTests(TestCase):
         self.assertEqual(status, 301)
         self.assertEqual(headers["Location"], "https://lularm.com/en/")
         self.assertIn("default-src 'none'", headers["Content-Security-Policy"])
+
+    def test_nginx_generated_errors_have_fallback_without_upstream_headers(self):
+        for path, method, extra, expected in (
+            ("/upstream-error", "GET", {}, 502),
+            ("/en/", "POST", {"Content-Length": "13000000"}, 413),
+        ):
+            with self.subTest(status=expected):
+                status, headers, _body = self.request(
+                    path, method=method, extra_headers=extra
+                )
+                self.assertEqual(status, expected)
+                self.assertIn(
+                    "default-src 'none'", headers.get("Content-Security-Policy", "")
+                )
+                self.assertEqual(headers.get("X-Frame-Options"), "SAMEORIGIN")

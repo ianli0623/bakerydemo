@@ -64,6 +64,18 @@ test('offline root entry opens the English HTML file with no web server', () => 
   assert.doesNotMatch(result, /url=\/en\/|href="\/en\//);
 });
 
+test('offline conversion replaces the SSR policy before loading offline.js', () => {
+  const source = `<html><head><meta http-equiv="Content-Security-Policy" content="script-src 'strict-dynamic' 'sha256-obsolete'"></head><body></body></html>`;
+  const result = rewriteOfflineDocument(source, 'en/index.html');
+  const policy = result.match(
+    /http-equiv="Content-Security-Policy" content="([^"]+)"/i,
+  )?.[1];
+  assert(policy);
+  assert.match(policy, /script-src 'self'/);
+  assert.doesNotMatch(policy, /strict-dynamic|sha256-obsolete|unsafe-inline/);
+  assert.match(result, /src="\.\.\/offline\.js"/);
+});
+
 test('export replaces stale contents without deleting the open destination directory', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'semi-e187-offline-'));
   const source = join(root, 'source');

@@ -74,16 +74,7 @@ try:
 except ValueError:
     FAST_ID_TIMEOUT_SECONDS = 0.0
 
-# Emit application-owned response security headers. Keep CSP before the
-# clickjacking middleware so both headers are present on normal and error
-# responses, regardless of the reverse proxy configuration.
-_CSP_MIDDLEWARE = "csp.middleware.CSPMiddleware"
-if _CSP_MIDDLEWARE in MIDDLEWARE:
-    MIDDLEWARE.remove(_CSP_MIDDLEWARE)
-MIDDLEWARE.insert(
-    MIDDLEWARE.index("django.middleware.clickjacking.XFrameOptionsMiddleware"),
-    _CSP_MIDDLEWARE,
-)
+_CSP_MIDDLEWARE = "bakerydemo.account_security.csp.StrictCSPMiddleware"
 
 CSP_REPORT_ONLY = False
 CSP_DEFAULT_SRC = ("'self'",)
@@ -91,10 +82,16 @@ CSP_SCRIPT_SRC = ("'self'",)
 CSP_SCRIPT_SRC_ATTR = ("'none'",)
 CSP_STYLE_SRC = ("'self'",)
 CSP_STYLE_SRC_ATTR = ("'none'",)
+CSP_INCLUDE_NONCE_IN = ("script-src", "style-src")
 CSP_IMG_SRC = ("'self'", "data:", "blob:")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_FONT_SRC = ("'self'", "data:")
-CSP_FRAME_SRC = ("'self'",)
+CSP_FRAME_SRC = (
+    "'self'",
+    "https://www.youtube.com",
+    "https://www.youtube-nocookie.com",
+    "https://player.vimeo.com",
+)
 CSP_MEDIA_SRC = ("'self'",)
 CSP_MANIFEST_SRC = ("'self'",)
 CSP_WORKER_SRC = ("'self'", "blob:")
@@ -374,3 +371,13 @@ REFERRER_POLICY = os.environ.get(
 # Allow the redirect importer to work in load-balanced / cloud environments.
 # https://docs.wagtail.org/en/stable/reference/settings.html#redirects
 WAGTAIL_REDIRECTS_FILE_STORAGE = "cache"
+
+# Wrap even HTTPS, password-policy, basic-auth and slash redirects. Remove the
+# optional legacy django-csp middleware to avoid duplicate/contradictory policy.
+_X_FRAME_MIDDLEWARE = "django.middleware.clickjacking.XFrameOptionsMiddleware"
+MIDDLEWARE = [_CSP_MIDDLEWARE, _X_FRAME_MIDDLEWARE] + [
+    name
+    for name in MIDDLEWARE
+    if name
+    not in {_CSP_MIDDLEWARE, _X_FRAME_MIDDLEWARE, "csp.middleware.CSPMiddleware"}
+]

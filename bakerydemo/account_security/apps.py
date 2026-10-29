@@ -9,8 +9,10 @@ class AccountSecurityConfig(AppConfig):
     def ready(self):
         from django.contrib import admin
 
+        from .csp import install_wagtail_chooser_nonce
         from .forms import SecurityAdminAuthenticationForm
 
         admin.site.login_form = SecurityAdminAuthenticationForm
+        install_wagtail_chooser_nonce()
 
         from . import checks, signals  # noqa: F401

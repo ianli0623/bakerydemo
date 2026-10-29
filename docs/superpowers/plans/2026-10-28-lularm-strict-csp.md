@@ -6,7 +6,7 @@
 
 **Architecture:** Nuxt SSR owns the public-page CSP and uses a fresh nonce on every response. Django owns security headers for backend routes, while Nginx stops replacing application CSP values and applies a fallback only to responses it serves itself. All work is verified locally; deployment is excluded.
 
-**Tech Stack:** Nuxt 4.5, `nuxt-security` 2.7.0, Node test runner, Django, `django-csp` 3.8, Python `unittest`, Nginx configuration tests.
+**Tech Stack:** Nuxt 4.5, `nuxt-security` 2.7.0, Node test runner, Django, `django-csp` 3.8, Django test runner, Nginx configuration and HTTP/TLS tests.
 
 **Spec:** `docs/superpowers/specs/2026-10-28-lularm-strict-csp-design.md`
 
@@ -34,13 +34,13 @@
 - Modify: `nuxt-bakery-demo/package.json`
 - Modify: `nuxt-bakery-demo/package-lock.json`
 - Modify: `nuxt-bakery-demo/nuxt.config.ts`
-- Create: `nuxt-bakery-demo/tests/security-headers.integration.test.ts`
+- Create: `nuxt-bakery-demo/tests/integration/security-headers.test.ts`
 
 **Interfaces:**
 - Consumes: Nuxt Nitro output at `nuxt-bakery-demo/.output/server/index.mjs`.
 - Produces: HTML responses containing an enforced nonce-based CSP and `X-Frame-Options: SAMEORIGIN`.
 
-- [ ] **Step 1: Write the failing built-server integration test**
+- [x] **Step 1: Write the failing built-server integration test**
 
 Create a Node test that starts the built Nitro server on a dedicated local port, waits until `/en/` responds, and asserts:
 
@@ -51,13 +51,13 @@ Create a Node test that starts the built Nitro server on a dedicated local port,
 - Two `/en/` responses contain different nonces.
 - The child server is terminated even when an assertion fails.
 
-- [ ] **Step 2: Build and run the test to verify RED**
+- [x] **Step 2: Build and run the test to verify RED**
 
-Run: `npm run build && node --test --experimental-strip-types tests/security-headers.integration.test.ts`
+Run: `npm run test:integration`
 
 Expected: FAIL because the current Nuxt response has no application-owned strict CSP.
 
-- [ ] **Step 3: Install and configure `nuxt-security` 2.7.0**
+- [x] **Step 3: Install and configure `nuxt-security` 2.7.0**
 
 Run: `npm install --save-exact nuxt-security@2.7.0`
 
@@ -72,7 +72,7 @@ directives:
 - `img-src`: `'self'`, `data:`, `blob:`
 - `connect-src`: `'self'`
 - `font-src`: `'self'`, `data:`
-- `frame-src`: `'self'`
+- `frame-src`: `'self'`, `https://www.youtube-nocookie.com`, `https://player.vimeo.com`
 - `media-src`: `'self'`
 - `manifest-src`: `'self'`
 - `worker-src`: `'self'`, `blob:`
@@ -84,13 +84,13 @@ directives:
 Preserve the existing i18n, runtime configuration, API proxy, and prerender
 settings.
 
-- [ ] **Step 4: Rebuild and run the integration test to verify GREEN**
+- [x] **Step 4: Rebuild and run the integration test to verify GREEN**
 
-Run: `npm run build && node --test --experimental-strip-types tests/security-headers.integration.test.ts`
+Run: `npm run test:integration`
 
 Expected: PASS with unique matching nonces and no missing directive.
 
-- [ ] **Step 5: Run existing frontend tests and type checking**
+- [x] **Step 5: Run existing frontend tests and type checking**
 
 Run: `npm test`
 
@@ -98,10 +98,10 @@ Run: `npm run typecheck`
 
 Expected: all existing tests pass and type checking exits 0.
 
-- [ ] **Step 6: Commit the Nuxt deliverable**
+- [x] **Step 6: Commit the Nuxt deliverable**
 
 ```bash
-git add nuxt-bakery-demo/package.json nuxt-bakery-demo/package-lock.json nuxt-bakery-demo/nuxt.config.ts nuxt-bakery-demo/tests/security-headers.integration.test.ts
+git add nuxt-bakery-demo/package.json nuxt-bakery-demo/package-lock.json nuxt-bakery-demo/nuxt.config.ts nuxt-bakery-demo/tests/integration/security-headers.test.ts
 git commit -m "fix: enforce strict CSP in Nuxt"
 ```
 
@@ -116,38 +116,38 @@ git commit -m "fix: enforce strict CSP in Nuxt"
 - Consumes: `csp.middleware.CSPMiddleware` and Django `XFrameOptionsMiddleware`.
 - Produces: enforced backend CSP plus `X-Frame-Options: SAMEORIGIN` without changing authentication or Fast-ID behavior.
 
-- [ ] **Step 1: Extend production-settings tests and add a response test**
+- [x] **Step 1: Extend production-settings tests and add a response test**
 
 Assert that production settings install CSP middleware in the response path, disable report-only mode, define the same explicit resource/form/base/frame directives, and retain `X_FRAME_OPTIONS = "SAMEORIGIN"`. Exercise the actual middleware around a real `HttpResponse` and assert the emitted headers.
 
-- [ ] **Step 2: Run focused tests to verify RED**
+- [x] **Step 2: Run focused tests to verify RED**
 
-Run: `python -m unittest bakerydemo.account_security.tests.test_settings bakerydemo.account_security.tests.test_response_security_headers -v`
+Run: `python manage.py test bakerydemo.account_security.tests.test_settings bakerydemo.account_security.tests.test_response_security_headers --settings=bakerydemo.settings.test`
 
 Expected: FAIL because production currently does not unconditionally enforce the complete policy.
 
-- [ ] **Step 3: Configure production CSP minimally**
+- [x] **Step 3: Configure production CSP minimally**
 
-Insert CSP middleware before clickjacking middleware and set the same explicit
-resource/form/base/frame directives as Task 1, except Django uses
-`script-src 'self'` and `style-src 'self'` because the Wagtail templates load
-their executable scripts and styles from same-origin static URLs. Set
-`CSP_REPORT_ONLY = False` and `X_FRAME_OPTIONS = "SAMEORIGIN"`. Do not alter
-dev/test HTTPS behavior.
+Place request-local CSP and clickjacking middleware outside short-circuiting
+redirect middleware. Authorize trusted Wagtail inline initializers, theme JS,
+and admin CSS with request nonces; leave arbitrary injected scripts unauthorized.
+Keep same-origin scripts/styles and the supported YouTube/Vimeo frame origins.
+Set `CSP_REPORT_ONLY = False` and `X_FRAME_OPTIONS = "SAMEORIGIN"`.
+Do not alter dev/test HTTPS behavior.
 
-- [ ] **Step 4: Run focused tests to verify GREEN**
+- [x] **Step 4: Run focused tests to verify GREEN**
 
-Run: `python -m unittest bakerydemo.account_security.tests.test_settings bakerydemo.account_security.tests.test_response_security_headers -v`
+Run: `python manage.py test bakerydemo.account_security.tests.test_settings bakerydemo.account_security.tests.test_response_security_headers --settings=bakerydemo.settings.test`
 
 Expected: PASS.
 
-- [ ] **Step 5: Run Django system checks**
+- [x] **Step 5: Run Django system checks**
 
 Run: `python manage.py check --settings=bakerydemo.settings.test`
 
 Expected: no issues.
 
-- [ ] **Step 6: Commit the Django deliverable**
+- [x] **Step 6: Commit the Django deliverable**
 
 ```bash
 git add bakerydemo/settings/production.py bakerydemo/account_security/tests/test_settings.py bakerydemo/account_security/tests/test_response_security_headers.py
@@ -159,32 +159,33 @@ git commit -m "fix: enforce backend security headers"
 **Files:**
 - Modify: `deploy/nginx/semi-e187.conf`
 - Modify: `bakerydemo/base/tests/test_nginx_deployment_config.py`
+- Create: `bakerydemo/base/tests/test_nginx_response_headers.py`
 
 **Interfaces:**
 - Consumes: application-generated CSP and clickjacking headers from Tasks 1 and 2.
 - Produces: proxy routes that preserve those headers and direct asset routes with fallback protection.
 
-- [ ] **Step 1: Replace the old structural header assertion with boundary assertions**
+- [x] **Step 1: Replace the old structural header assertion with boundary assertions**
 
-Assert that the HTTPS server has no global fixed CSP or X-Frame-Options override, proxy locations do not replace application CSP, and `/static/` plus `/media/` receive complete fallback CSP, `SAMEORIGIN`, and `X-Content-Type-Options: nosniff`.
+Assert that the HTTPS server preserves upstream CSP/X-Frame-Options through conditional maps, and `/static/`, `/media/`, redirects and Nginx-generated errors receive fallback protection. Verify actual HTTP/TLS responses as well as configuration structure.
 
-- [ ] **Step 2: Run the Nginx regression test to verify RED**
+- [x] **Step 2: Run the Nginx regression test to verify RED**
 
 Run: `python -m unittest bakerydemo.base.tests.test_nginx_deployment_config -v`
 
 Expected: FAIL because the current server block globally replaces CSP.
 
-- [ ] **Step 3: Update the versioned Nginx configuration**
+- [x] **Step 3: Update the versioned Nginx configuration**
 
-Remove the global fixed security-header override, keep proxy routing unchanged, and apply fallback headers only inside direct static/media locations.
+Replace the global fixed policy with maps that retain the upstream policy verbatim when present and supply a defensive fallback when absent. Keep proxy routing unchanged. Cover direct assets, redirects, 413 and 502 responses.
 
-- [ ] **Step 4: Run the Nginx regression test to verify GREEN**
+- [x] **Step 4: Run the Nginx regression test to verify GREEN**
 
 Run: `python -m unittest bakerydemo.base.tests.test_nginx_deployment_config -v`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the Nginx deliverable**
+- [x] **Step 5: Commit the Nginx deliverable**
 
 ```bash
 git add deploy/nginx/semi-e187.conf bakerydemo/base/tests/test_nginx_deployment_config.py
@@ -195,30 +196,43 @@ git commit -m "fix: preserve application CSP at proxy"
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-10-28-lularm-strict-csp.md`
+- Modify: `docs/superpowers/specs/2026-10-28-lularm-strict-csp-design.md`
+- Create: `docs/SEMI_E187_Strict_CSP_Local_Verification_zh-TW.md`
 
 **Interfaces:**
 - Consumes: all deliverables from Tasks 1-3.
 - Produces: recorded local evidence and no deployment side effects.
 
-- [ ] **Step 1: Run the complete local verification set**
+- [x] **Step 1: Run the complete local verification set**
 
 Run the Nuxt build/integration test, existing Nuxt tests, type check, focused Django tests, Django system check, Nginx regression tests, Ruff on changed Python files, and Prettier on changed TypeScript/config files.
 
-Expected: every locally runnable command exits 0. Report any full-suite database permission limitation separately rather than hiding it.
+Expected: every locally runnable command exits 0. Run the full Django suite with an isolated in-memory SQLite database and explicitly set `NGINX_TEST_BINARY` so runtime Nginx tests are not skipped.
 
-- [ ] **Step 2: Inspect the final diff and confirm the deployment gate**
+- [x] **Step 2: Inspect the final diff and confirm the deployment gate**
 
 Run: `git diff --check`
 
 Run: `git status --short`
 
-Expected: only planned files plus the pre-existing unrelated documentation changes are present; no VM, SSH, PuTTY, or deployment command was executed.
+Expected: only Strict CSP implementation, compatibility tests and verification documentation are changed in this worktree. No Strict CSP artifact is deployed. The separately authorized temporary IP-access task is outside this plan.
 
-- [ ] **Step 3: Request independent review and resolve findings once**
+- [x] **Step 3: Request independent review and resolve findings once**
 
 Review focus: nonce correctness, Wagtail compatibility, header ownership, process cleanup, and accidental deployment/config-secret changes.
 
-- [ ] **Step 4: Mark the plan complete and report local results**
+- [x] **Step 4: Mark the plan complete and report local results**
 
 Update this plan's checkboxes only after fresh verification. Do not deploy; ask for separate approval before any test-environment update.
 
+## Completion evidence — 2026-10-29
+
+Tasks 1–4 and the independent-review fix pass are complete locally. The final
+run passed 357 Django tests (including 8 Nginx checks), 93 Nuxt unit tests,
+1 freshly built Nitro integration test, type checking, system/migration
+checks and targeted formatting. Offline runtime execution passed in isolated
+headless Chrome. Details, review findings, rulings and deployment limitations:
+`docs/SEMI_E187_Strict_CSP_Local_Verification_zh-TW.md`.
+
+No Strict CSP artifacts were deployed. Keep the branch/worktree for inspection;
+the active sites' separately configured IP gates remain unchanged.

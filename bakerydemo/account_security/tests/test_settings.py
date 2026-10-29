@@ -44,6 +44,7 @@ print(json.dumps({{
     "fast_id_timeout": getattr(s, "FAST_ID_TIMEOUT_SECONDS", None),
     "google_map_api_key": getattr(s, "GOOGLE_MAP_API_KEY", ""),
     "middleware": s.MIDDLEWARE,
+    "csp_configuration": {{key: getattr(s, key) for key in dir(s) if key.startswith("CSP_")}},
     "csp_report_only": getattr(s, "CSP_REPORT_ONLY", None),
     "csp_default_src": getattr(s, "CSP_DEFAULT_SRC", None),
     "csp_script_src": getattr(s, "CSP_SCRIPT_SRC", None),
@@ -135,10 +136,8 @@ print(json.dumps({{
 
         middleware = production["middleware"]
         self.assertLess(
-            middleware.index("csp.middleware.CSPMiddleware"),
-            middleware.index(
-                "django.middleware.clickjacking.XFrameOptionsMiddleware"
-            ),
+            middleware.index("bakerydemo.account_security.csp.StrictCSPMiddleware"),
+            middleware.index("django.middleware.clickjacking.XFrameOptionsMiddleware"),
         )
         self.assertFalse(production["csp_report_only"])
         self.assertEqual(production["csp_default_src"], ["'self'"])
@@ -146,12 +145,18 @@ print(json.dumps({{
         self.assertEqual(production["csp_script_src_attr"], ["'none'"])
         self.assertEqual(production["csp_style_src"], ["'self'"])
         self.assertEqual(production["csp_style_src_attr"], ["'none'"])
-        self.assertEqual(
-            production["csp_img_src"], ["'self'", "data:", "blob:"]
-        )
+        self.assertEqual(production["csp_img_src"], ["'self'", "data:", "blob:"])
         self.assertEqual(production["csp_connect_src"], ["'self'"])
         self.assertEqual(production["csp_font_src"], ["'self'", "data:"])
-        self.assertEqual(production["csp_frame_src"], ["'self'"])
+        self.assertEqual(
+            production["csp_frame_src"],
+            [
+                "'self'",
+                "https://www.youtube.com",
+                "https://www.youtube-nocookie.com",
+                "https://player.vimeo.com",
+            ],
+        )
         self.assertEqual(production["csp_media_src"], ["'self'"])
         self.assertEqual(production["csp_manifest_src"], ["'self'"])
         self.assertEqual(production["csp_worker_src"], ["'self'", "blob:"])

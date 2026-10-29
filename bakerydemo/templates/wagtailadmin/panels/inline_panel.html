@@ -1,0 +1,9 @@
+{% extends "wagtailadmin/panels/inline_panel.html" %}
+{% load security_tags %}
+{% block js_init %}
+    <script nonce="{% csp_nonce %}">
+        (function() {
+            var panel = new InlinePanel(JSON.parse("{{ options_json|escapejs }}"));
+        })();
+    </script>
+{% endblock %}

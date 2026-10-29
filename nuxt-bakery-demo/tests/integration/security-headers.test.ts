@@ -34,12 +34,17 @@ async function getAvailablePort(): Promise<number> {
   return address.port;
 }
 
-async function waitForServer(url: string, process: ChildProcess): Promise<void> {
+async function waitForServer(
+  url: string,
+  process: ChildProcess,
+): Promise<void> {
   const deadline = Date.now() + 20_000;
 
   while (Date.now() < deadline) {
     if (process.exitCode !== null) {
-      throw new Error(`Nitro exited before becoming ready (${process.exitCode})`);
+      throw new Error(
+        `Nitro exited before becoming ready (${process.exitCode})`,
+      );
     }
 
     try {
@@ -98,7 +103,7 @@ test('built Nuxt responses enforce a unique nonce-based strict CSP', async () =>
   const origin = `http://127.0.0.1:${port}`;
   let output = '';
   const server = spawn(process.execPath, ['.output/server/index.mjs'], {
-    cwd: new URL('..', import.meta.url),
+    cwd: new URL('../..', import.meta.url),
     env: {
       ...process.env,
       NITRO_HOST: '127.0.0.1',

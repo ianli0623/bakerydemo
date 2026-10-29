@@ -1,0 +1,1 @@
+{% load security_tags %}{% include 'django/forms/widgets/time.html' %}<script nonce="{% csp_nonce %}">initTimeChooser("{{ widget.attrs.id|escapejs }}", {{ widget.config_json|safe }});</script>

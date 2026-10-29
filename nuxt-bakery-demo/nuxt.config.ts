@@ -35,7 +35,11 @@ export default defineNuxtConfig({
         'img-src': ["'self'", 'data:', 'blob:'],
         'connect-src': ["'self'"],
         'font-src': ["'self'", 'data:'],
-        'frame-src': ["'self'"],
+        'frame-src': [
+          "'self'",
+          'https://www.youtube-nocookie.com',
+          'https://player.vimeo.com',
+        ],
         'media-src': ["'self'"],
         'manifest-src': ["'self'"],
         'worker-src': ["'self'", 'blob:'],
@@ -48,6 +52,14 @@ export default defineNuxtConfig({
       xFrameOptions: 'SAMEORIGIN',
       xContentTypeOptions: 'nosniff',
       referrerPolicy: 'strict-origin-when-cross-origin',
+      crossOriginEmbedderPolicy: false,
+      permissionsPolicy: {
+        fullscreen: [
+          'self',
+          'https://www.youtube-nocookie.com',
+          'https://player.vimeo.com',
+        ],
+      },
     },
     requestSizeLimiter: false,
     rateLimiter: false,

@@ -11,6 +11,7 @@
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
     "test": "node --test --experimental-strip-types tests/*.test.ts",
+    "test:integration": "npm run build && node --test --experimental-strip-types tests/integration/*.test.ts",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {

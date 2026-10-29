@@ -1,6 +1,7 @@
 import json
 import re
 
+from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
@@ -263,11 +264,14 @@ class AdminNavigationTests(TestCase):
 
         response = self.client.get(reverse("wagtailadmin_home"))
         with self.subTest(item="search"):
+            style = BeautifulSoup(response.content, "html.parser").select_one(
+                "style[data-hide-admin-search]"
+            )
+            self.assertIsNotNone(style)
             self.assertRegex(
-                response.content.decode(),
-                r"<style data-hide-admin-search>\s*"
+                style.get_text(),
                 r'#wagtail-sidebar form\[role="search"\]\s*'
-                r"\{\s*display:\s*none;\s*\}\s*</style>",
+                r"\{\s*display:\s*none;\s*\}",
             )
 
     def test_root_explorer_hides_site_configuration_help(self):

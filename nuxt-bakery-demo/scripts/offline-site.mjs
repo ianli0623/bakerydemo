@@ -32,6 +32,30 @@ export function toOfflineUrl(url, documentPath) {
 export function rewriteOfflineDocument(html, documentPath) {
   let result = html.replace(/<script\b[\s\S]*?<\/script>/gi, '');
 
+  // The converted file uses offline.js instead of Nuxt's hashed SSR scripts.
+  // Give this file its own policy, without SSR nonces or strict-dynamic.
+  result = result.replace(/<meta\b[^>]*>/gi, (tag) =>
+    readAttribute(tag, 'http-equiv').toLowerCase() === 'content-security-policy'
+      ? ''
+      : tag,
+  );
+  const offlinePolicy = [
+    "default-src 'none'",
+    "script-src 'self'",
+    "style-src 'self'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "media-src 'self'",
+    'frame-src https://www.youtube-nocookie.com https://player.vimeo.com',
+    "base-uri 'none'",
+    "object-src 'none'",
+    "form-action 'none'",
+  ].join('; ');
+  result = result.replace(
+    /<\/head>/i,
+    `<meta http-equiv="Content-Security-Policy" content="${offlinePolicy}"></head>`,
+  );
+
   result = result.replace(/<link\b[^>]*>/gi, (tag) => {
     const relations = readAttribute(tag, 'rel').toLowerCase().split(/\s+/);
     if (relations.some((relation) => removableLinkRelations.has(relation))) {

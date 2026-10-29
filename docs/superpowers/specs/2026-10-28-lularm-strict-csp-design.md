@@ -76,6 +76,10 @@ adding a per-request nonce. It can also overwrite a dynamic application CSP.
   production responses, with explicit `form-action`, `frame-ancestors`, and
   resource directives.
 - Preserve same-origin framing required by Wagtail preview functionality.
+- Supply request nonces only at trusted template/widget construction points.
+  Wagtail 7 chooser/date/inline-panel initializers and the local theme/admin
+  CSS require these nonces; never authorize all scripts by rewriting HTML.
+- Wrap early redirects with CSP and clickjacking middleware as well.
 
 ### Nginx boundary
 
@@ -84,6 +88,17 @@ adding a per-request nonce. It can also overwrite a dynamic application CSP.
   directly by Nginx, such as `/static/` and `/media/`.
 - Continue passing application response headers unchanged through the Nuxt and
   Django proxy locations.
+- Conditional maps supply fallback headers for Nginx-generated errors when
+  upstream headers are absent, including HTTP 413 and 502.
+
+### Compatibility retained after independent review
+
+- Permit the existing supported YouTube/Vimeo frame origins explicitly, with
+  compatible fullscreen permissions; keep arbitrary frame origins blocked.
+- Give converted offline HTML its own same-origin script/style policy after
+  removing the obsolete SSR CSP hashes/nonces. Verify offline.js in Chrome.
+- Keep ordinary unit tests independent of ignored build output. The separate
+  `npm run test:integration` command always builds before testing Nitro.
 
 ## Local verification
 
@@ -104,6 +119,9 @@ adding a per-request nonce. It can also overwrite a dynamic application CSP.
 Deployment is a separate, explicit action after local verification is reported
 and approved. Before deployment, back up the live Nginx configuration, validate
 the repository configuration with `nginx -t`, and retain a rollback command.
+The active sites currently have a separately authorized exact-IP preview gate.
+Preserve that gate and its trusted-proxy settings when later merging security
+header changes; do not replace a live site file wholesale with this test-site
+template. This local change does not deploy or remove the live IP restrictions.
 After deployment, rescan only `lularm.com` and `www.lularm.com`, excluding
 Cloudflare-controlled hosts and `/cdn-cgi/` paths.
-

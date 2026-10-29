@@ -1,4 +1,4 @@
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from wagtail import hooks
 from wagtail.admin.filters import WagtailFilterSet
 from wagtail.admin.userbar import ContentCheckerItem
@@ -12,6 +12,7 @@ from wagtail.admin.views.pages.history import PageHistoryView
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 
+from bakerydemo.account_security.csp import current_nonce
 from bakerydemo.account_security.forms import AccountAliasForm
 from bakerydemo.base.admin_history import (
     get_collapsed_page_history_columns,
@@ -83,12 +84,13 @@ def register_icons(icons):
 
 @hooks.register("insert_global_admin_css")
 def hide_admin_search():
-    return mark_safe(
+    return format_html(
         """
-        <style data-hide-admin-search>
-            #wagtail-sidebar form[role="search"] { display: none; }
+        <style nonce="{}" data-hide-admin-search>
+            #wagtail-sidebar form[role="search"] {{ display: none; }}
         </style>
-        """
+        """,
+        current_nonce(),
     )
 
 
