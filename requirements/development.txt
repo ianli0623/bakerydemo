@@ -2,3 +2,6 @@
 ruff==0.15.15
 curlylint==0.13.1
 djhtml==3.0.10
+
+# Response security tests exercise the production WhiteNoise middleware.
+whitenoise>=6.11.0,<7
