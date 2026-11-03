@@ -98,45 +98,70 @@ function assertInlineElementsUseNonce(html: string, nonce: string): void {
   }
 }
 
-test('built Nuxt responses enforce a unique nonce-based strict CSP', async () => {
-  const port = await getAvailablePort();
-  const origin = `http://127.0.0.1:${port}`;
-  let output = '';
-  const server = spawn(process.execPath, ['.output/server/index.mjs'], {
-    cwd: new URL('../..', import.meta.url),
-    env: {
-      ...process.env,
-      NITRO_HOST: '127.0.0.1',
-      NITRO_PORT: String(port),
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
+for (const { cmsBaseUrl, imageOrigin } of [
+  {
+    cmsBaseUrl: 'http://127.0.0.1:8000',
+    imageOrigin: 'http://127.0.0.1:8000',
+  },
+  {
+    cmsBaseUrl: 'https://lularm.com/cms/?unused=value',
+    imageOrigin: 'https://lularm.com',
+  },
+  { cmsBaseUrl: 'javascript:alert(1)', imageOrigin: null },
+  { cmsBaseUrl: 'not-a-url', imageOrigin: null },
+]) {
+  test(`built Nuxt keeps strict CSP with CMS ${cmsBaseUrl}`, async () => {
+    const port = await getAvailablePort();
+    const origin = `http://127.0.0.1:${port}`;
+    let output = '';
+    const server = spawn(process.execPath, ['.output/server/index.mjs'], {
+      cwd: new URL('../..', import.meta.url),
+      env: {
+        ...process.env,
+        NITRO_HOST: '127.0.0.1',
+        NITRO_PORT: String(port),
+        NUXT_BAKERY_BASE_URL: cmsBaseUrl,
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    server.stdout?.on('data', (chunk) => {
+      output += chunk.toString();
+    });
+    server.stderr?.on('data', (chunk) => {
+      output += chunk.toString();
+    });
+
+    try {
+      await waitForServer(`${origin}/en/`, server);
+
+      const rootResponse = await fetch(`${origin}/`, { redirect: 'manual' });
+      assert.equal(rootResponse.status, 301);
+      assertSecurityHeaders(rootResponse);
+
+      const firstResponse = await fetch(`${origin}/en/`);
+      assert.equal(firstResponse.status, 200);
+      const firstNonce = assertSecurityHeaders(firstResponse);
+      const imageSources = firstResponse.headers
+        .get('content-security-policy')!
+        .split(';')
+        .map((directive) => directive.trim().split(/\s+/))
+        .find(([directive]) => directive === 'img-src')!
+        .slice(1);
+      assert.deepEqual(
+        imageSources,
+        ["'self'", 'data:', 'blob:', ...(imageOrigin ? [imageOrigin] : [])],
+        'Allow only the configured HTTP(S) CMS image origin',
+      );
+      assertInlineElementsUseNonce(await firstResponse.text(), firstNonce);
+
+      const secondResponse = await fetch(`${origin}/en/`);
+      const secondNonce = assertSecurityHeaders(secondResponse);
+      assert.notEqual(secondNonce, firstNonce);
+    } catch (error) {
+      throw new Error(`${String(error)}\nNitro output:\n${output}`);
+    } finally {
+      server.kill();
+      if (server.exitCode === null) await once(server, 'exit');
+    }
   });
-  server.stdout?.on('data', (chunk) => {
-    output += chunk.toString();
-  });
-  server.stderr?.on('data', (chunk) => {
-    output += chunk.toString();
-  });
-
-  try {
-    await waitForServer(`${origin}/en/`, server);
-
-    const rootResponse = await fetch(`${origin}/`, { redirect: 'manual' });
-    assert.equal(rootResponse.status, 301);
-    assertSecurityHeaders(rootResponse);
-
-    const firstResponse = await fetch(`${origin}/en/`);
-    assert.equal(firstResponse.status, 200);
-    const firstNonce = assertSecurityHeaders(firstResponse);
-    assertInlineElementsUseNonce(await firstResponse.text(), firstNonce);
-
-    const secondResponse = await fetch(`${origin}/en/`);
-    const secondNonce = assertSecurityHeaders(secondResponse);
-    assert.notEqual(secondNonce, firstNonce);
-  } catch (error) {
-    throw new Error(`${String(error)}\nNitro output:\n${output}`);
-  } finally {
-    server.kill();
-    if (server.exitCode === null) await once(server, 'exit');
-  }
-});
+}
