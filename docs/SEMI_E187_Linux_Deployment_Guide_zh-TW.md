@@ -236,7 +236,7 @@ exit
 
 ## 11. 安裝 Node.js 24
 
-目前專案的 `.nvmrc` 指定 Node.js 24。
+目前專案的 `.nvmrc` 指定 Node.js 24.22.2。修補版 Nuxt 要求 `^22.22.3 || ^24.15.0 || >=26.0.0`，舊版 24.11.1 不符合需求。部署前先安裝指定版本，並確認 systemd 的 Node.js 路徑也指向該版本。
 
 ```bash
 sudo -iu deploy

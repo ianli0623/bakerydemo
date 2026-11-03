@@ -9,12 +9,20 @@
     }
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^10.0.1",
     "@wagtail/stylelint-config-wagtail": "^2.0.0",
-    "eslint": "^9.39.2",
+    "eslint": "^10.14.0",
     "globals": "^16.5.0",
     "prettier": "^3.8.3",
-    "stylelint": "^17.13.0"
+    "stylelint": "^17.16.0"
+  },
+  "overrides": {
+    "eslint": {
+      "minimatch": "^11.0.1"
+    },
+    "@eslint/config-array": {
+      "minimatch": "^11.0.1"
+    }
   },
   "scripts": {
     "fix:js": "eslint --ext .js --fix .",

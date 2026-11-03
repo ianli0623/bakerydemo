@@ -111,13 +111,12 @@ nginx -v
 openssl version
 ```
 
-本專案 `nuxt-bakery-demo/package.json` 要求 Node.js `>=22`。若 Ubuntu 套件提供的 Node.js 低於 22，停止安裝並由系統管理者核准 Node.js 來源；不要自行執行網路上的安裝腳本。
+本專案 `nuxt-bakery-demo/package.json` 要求 Node.js `^22.22.3 || ^24.15.0 || >=26.0.0`。建議使用 `.nvmrc` 指定的 24.22.2；僅檢查主版本為 22 或 24 並不足夠。若 Ubuntu 套件版本不符，先由系統管理者確認 Node.js 來源；不要自行執行網路上的安裝腳本。
 
-可用下列指令檢查 Node.js 主版本：
+可用下列指令確認與本次驗證版本一致（此階段尚未下載專案）：
 
 ```bash
-node_major="$(node --version | sed -E 's/^v([0-9]+).*/\1/')"
-test "$node_major" -ge 22
+test "$(node --version)" = "v24.22.2"
 ```
 
 ## 6. 建立部署帳號與目錄
@@ -715,7 +714,7 @@ sudo journalctl -u semi-e187-frontend -n 100 --no-pager
 
 - [ ] 已確認主機名稱、Ubuntu 版本、時間與資源。
 - [ ] 已安裝 Git、Python、Node.js、PostgreSQL、Redis、Nginx 與編譯套件。
-- [ ] Node.js 主版本為 22 以上。
+- [ ] Node.js 符合 `package.json` 版本需求，建議與 `.nvmrc` 指定版本一致。
 - [ ] PostgreSQL、Redis 與 Nginx 已設定開機啟動。
 
 ### 帳號與目錄
