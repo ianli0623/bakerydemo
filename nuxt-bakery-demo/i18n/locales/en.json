@@ -119,9 +119,9 @@
   },
   "documents": {
     "number": "No.",
-    "title": "Document",
-    "summary": "Summary",
-    "status": "Status"
+    "title": "File Name",
+    "summary": "Key points of the standard",
+    "status": "File Status and Downloads"
   },
   "embed": {
     "openMedia": "Open external media",

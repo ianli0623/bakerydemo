@@ -120,8 +120,8 @@
   "documents": {
     "number": "編號",
     "title": "文件名稱",
-    "summary": "內容摘要",
-    "status": "狀態"
+    "summary": "規範重點",
+    "status": "文件狀態"
   },
   "embed": {
     "openMedia": "開啟外部媒體",

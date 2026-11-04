@@ -400,6 +400,81 @@ sudo journalctl \
 6. 本次修改的畫面與功能符合需求。
 7. 若本次涉及登入，完成 Email 密碼及 Fast-ID／Windows Hello 測試。
 
+### 10.5 事件紀錄：首頁顯示「目前無法連線到 Bakery CMS」
+
+2026-10-28 正式環境曾出現以下現象：
+
+- `https://www.e187.tw/zh-tw` 可以開啟，但首頁顯示「首頁讀取失敗」。
+- 上方導覽顯示「選單暫時無法載入」。
+- Django／Wagtail 公開 API 與服務本身正常，Nuxt 的
+  `/api/bakery/home?locale=zh-tw` 卻回傳 `400`。
+
+根因是 `/etc/semi-e187/frontend.env` 將 `NUXT_BAKERY_BASE_URL` 設為
+`http://127.0.0.1:8000`。正式 Django 僅允許 `e187.tw` 與
+`www.e187.tw`，因此 Nuxt 對 `127.0.0.1:8000` 發出的請求會被 Django
+Host 驗證拒絕為 `400 Bad Request`。正式環境必須使用公開 HTTPS 網域：
+
+```dotenv
+NUXT_BAKERY_BASE_URL=https://e187.tw
+```
+
+診斷時先確認故障邊界，不要直接修改 Django `ALLOWED_HOSTS`：
+
+```bash
+# Nuxt 彙整 API：故障時會回傳 400。
+curl -i \
+  'http://127.0.0.1:3100/api/bakery/home?locale=zh-tw'
+
+# Wagtail 公開 API：應回傳 200。
+curl -sS -o /dev/null \
+  -w 'wagtail=%{http_code}\n' \
+  'https://e187.tw/api/site-settings/?locale=zh-hant'
+
+# 只顯示非敏感的 Bakery 網址設定。
+sudo grep '^NUXT_BAKERY_BASE_URL=' \
+  /etc/semi-e187/frontend.env
+```
+
+修復前先備份環境檔，再只調整 Bakery 公開網址：
+
+```bash
+timestamp="$(date +%Y%m%d-%H%M%S)"
+backup="/etc/semi-e187/frontend.env.bak-${timestamp}"
+
+sudo cp -a /etc/semi-e187/frontend.env "$backup"
+sudo sed -i \
+  's#^NUXT_BAKERY_BASE_URL=.*#NUXT_BAKERY_BASE_URL=https://e187.tw#' \
+  /etc/semi-e187/frontend.env
+sudo systemctl restart semi-e187-frontend
+```
+
+重新驗證原始故障路徑及頁面內容：
+
+```bash
+curl -fsS -o /dev/null \
+  -w 'home_api=%{http_code}\n' \
+  'http://127.0.0.1:3100/api/bakery/home?locale=zh-tw'
+
+page="$(curl -fsSL 'https://www.e187.tw/zh-tw')"
+
+if printf '%s' "$page" | grep -q '首頁讀取失敗'; then
+  echo '首頁仍然失敗'
+  exit 1
+fi
+
+printf '%s' "$page" | grep -q 'home-title'
+systemctl is-active nginx semi-e187-backend semi-e187-frontend
+```
+
+若驗證失敗，使用剛建立的 `$backup` 回復，不要覆寫其他環境變數：
+
+```bash
+sudo cp -a "$backup" /etc/semi-e187/frontend.env
+sudo systemctl restart semi-e187-frontend
+```
+
+備份與事件紀錄不得包含 API Key、Token、Client Secret 或完整環境檔內容。
+
 ## 11. 回復上一個 release
 
 程式切換後若健康檢查失敗，使用部署時記錄的 `PREVIOUS` 路徑：

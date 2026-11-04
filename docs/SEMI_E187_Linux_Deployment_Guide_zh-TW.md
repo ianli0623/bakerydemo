@@ -1018,7 +1018,7 @@ Windows Hello 已註冊憑證依賴資料庫中的公開金鑰紀錄。若回復
 
 | 問題 | 檢查方式 | 處理方向 |
 |---|---|---|
-| 首頁讀取失敗 | 查看前後台 `journalctl` | 確認服務啟動及 `NUXT_BAKERY_BASE_URL` |
+| 首頁讀取失敗、選單無法載入，Nuxt Bakery API 回傳 400 | 比對 Wagtail 公開 API 與 `http://127.0.0.1:3100/api/bakery/home?locale=zh-tw` | 正式環境的 `NUXT_BAKERY_BASE_URL` 必須是公開 HTTPS 網域；若使用 `127.0.0.1:8000`，Django Host 驗證會拒絕請求。完整流程見正式部署 Runbook 第 10.5 節 |
 | 圖片破圖 | 直接開啟圖片網址 | 確認 media 已搬移、權限正確且 CMS 網址為公開 HTTPS |
 | 後台重複轉向 | 檢查 `X-Forwarded-Proto` | Nginx 必須傳送 `$scheme` 給 Wagtail |
 | 資料庫連線失敗 | 使用 `psql -h 127.0.0.1` | 確認角色、密碼、資料庫及 PostgreSQL 服務 |
