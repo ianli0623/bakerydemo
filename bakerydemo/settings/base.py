@@ -327,6 +327,9 @@ WAGTAILSEARCH_BACKENDS = {
 # Wagtail settings
 WAGTAIL_SITE_NAME = "The Wagtail Bakery"
 
+# Use the bundled same-origin avatar so the admin works with strict CSP.
+WAGTAIL_GRAVATAR_PROVIDER_URL = None
+
 WAGTAIL_I18N_ENABLED = True
 
 WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [

@@ -90,6 +90,28 @@ class AdminAccountSettingsTests(TestCase):
         self.assertEqual(self.user.username, "updated-alias")
         self.assertEqual(self.user.email, original_email)
 
+    def test_default_avatar_is_same_origin_on_account_and_user_list(self):
+        for route in ("wagtailadmin_account", "wagtailusers_users:index"):
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(
+                    response,
+                    'src="/static/wagtailadmin/images/default-user-avatar.png',
+                )
+                self.assertNotContains(response, "www.gravatar.com")
+
+    def test_custom_avatar_is_displayed_on_account_and_user_list(self):
+        self.profile.avatar.save("custom.png", self._image_file(), save=True)
+
+        for route in ("wagtailadmin_account", "wagtailusers_users:index"):
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, f'src="{self.profile.avatar.url}"')
+
     def test_reset_to_default_clears_custom_avatar(self):
         self.profile.avatar.save("custom.png", self._image_file(), save=True)
         avatar_name = self.profile.avatar.name
